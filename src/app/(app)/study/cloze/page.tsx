@@ -9,7 +9,7 @@ export default async function ClozePage() {
       <section>
         <h1 className="text-2xl font-bold tracking-tight">Cloze</h1>
         <p className="mt-1 text-sm text-muted">
-          One word is missing. Say it aloud, then flip.
+          The agreement slot is blanked out.
         </p>
       </section>
       <ClozeBody />

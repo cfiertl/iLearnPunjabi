@@ -56,7 +56,12 @@
 
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
-  --font-gurmukhi: var(--font-noto-gurmukhi), var(--font-geist-sans), sans-serif;
+  /* Fallbacks must themselves be Gurmukhi-capable. Geist has no Gurmukhi
+     glyphs, so listing it here only delays reaching a font that does — and a
+     poor fallback blurs exactly the distinctions (subjoined letters, addak,
+     nukta) that reading the script is meant to expose. */
+  --font-gurmukhi: var(--font-noto-gurmukhi), "Noto Sans Gurmukhi", "Gurmukhi MN",
+    "Gurmukhi Sangam MN", Raavi, sans-serif;
 }
 
 body {

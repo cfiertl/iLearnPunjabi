@@ -177,8 +177,11 @@ function CardFront({ card, mode }: { card: TrainerCard; mode: ReviewMode }) {
       <div className={FACE}>
         <SlotSentence card={card} treatment="blank" />
         <p className="text-sm text-muted">{card.englishPrompt}</p>
+        {/* The whole sentence, not the missing word alone: it still isolates
+            the agreement decision, and costs nothing to get production reps
+            rather than single-word recall. */}
         <p className="mt-3 text-sm font-medium text-brand-strong">
-          Say the missing word aloud, then flip.
+          Say the whole sentence aloud, filling the blank — then flip.
         </p>
       </div>
     );
