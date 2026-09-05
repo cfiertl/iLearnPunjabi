@@ -55,12 +55,83 @@ function clampBox(n: number): Box {
   return Math.min(Math.max(Math.round(n), 1), MAX_BOX) as Box;
 }
 
-/** Midnight-aligned due date, `days` from the start of today. */
-export function dueInDays(days: number, now = new Date()): Date {
-  const d = new Date(now);
-  d.setHours(0, 0, 0, 0);
-  d.setDate(d.getDate() + days);
-  return d;
+/**
+ * How far `date` is offset from UTC in `timeZone`, in milliseconds.
+ * Derived by asking Intl what wall-clock time that instant shows there.
+ */
+function offsetMs(date: Date, timeZone: string): number {
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone,
+    hour12: false,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+  }).formatToParts(date);
+
+  const p = Object.fromEntries(parts.map((x) => [x.type, x.value]));
+  const asUtc = Date.UTC(
+    Number(p.year),
+    Number(p.month) - 1,
+    Number(p.day),
+    Number(p.hour) % 24,
+    Number(p.minute),
+    Number(p.second),
+  );
+  return asUtc - date.getTime();
+}
+
+/** True if the string is an IANA zone this runtime understands. */
+export function isTimeZone(tz: unknown): tz is string {
+  if (typeof tz !== "string" || !tz) return false;
+  try {
+    new Intl.DateTimeFormat("en-CA", { timeZone: tz });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Midnight-aligned due date, `days` from the start of today — in the LEARNER's
+ * timezone, not the server's.
+ *
+ * This matters more than it looks. Serverless functions run in UTC, so aligning
+ * to the server's midnight put "due tomorrow" at 10am Sydney, which meant the
+ * morning session systematically missed cards that should have been waiting.
+ * Reviews are a daily habit anchored to the learner's day, so the day boundary
+ * has to be theirs.
+ */
+export function dueInDays(
+  days: number,
+  now = new Date(),
+  timeZone = "UTC",
+): Date {
+  const zone = isTimeZone(timeZone) ? timeZone : "UTC";
+
+  // Today's calendar date as seen in the learner's zone.
+  const [y, m, d] = new Intl.DateTimeFormat("en-CA", {
+    timeZone: zone,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  })
+    .format(now)
+    .split("-")
+    .map(Number);
+
+  // That wall-clock midnight, `days` on, read as if it were UTC...
+  const naive = new Date(Date.UTC(y, m - 1, d + days, 0, 0, 0, 0));
+
+  // ...then shifted back by the zone's offset to get the real instant. The
+  // offset has to be measured at the ANSWER, not at the guess: on the night
+  // before a DST change the first guess lands the other side of the transition
+  // and comes out an hour off, on the wrong day. Measuring again at the
+  // candidate settles it.
+  const firstPass = naive.getTime() - offsetMs(naive, zone);
+  return new Date(naive.getTime() - offsetMs(new Date(firstPass), zone));
 }
 
 export type Scheduled = {
@@ -81,12 +152,13 @@ export function applyGrade(
   currentBox: number,
   grade: Grade,
   now = new Date(),
+  timeZone = "UTC",
 ): Scheduled {
   if (grade === "correct") {
     const box = clampBox(currentBox + 1);
     return {
       box,
-      dueAt: dueInDays(BOX_INTERVAL_DAYS[box - 1], now),
+      dueAt: dueInDays(BOX_INTERVAL_DAYS[box - 1], now, timeZone),
       lapseDelta: 0,
       agreementDelta: 0,
     };
@@ -94,7 +166,7 @@ export function applyGrade(
 
   return {
     box: 1,
-    dueAt: dueInDays(1, now),
+    dueAt: dueInDays(1, now, timeZone),
     lapseDelta: grade === "fail" ? 1 : 0,
     agreementDelta: grade === "agreement" ? 1 : 0,
   };

@@ -51,7 +51,13 @@ export function ReviewSession({
       let saved = false;
       for (let attempt = 0; attempt < 2 && !saved; attempt++) {
         try {
-          await submitGrade(card.id, mode, grade);
+          // The browser is the only party that knows the learner day boundary.
+          await submitGrade(
+            card.id,
+            mode,
+            grade,
+            Intl.DateTimeFormat().resolvedOptions().timeZone,
+          );
           saved = true;
         } catch {
           if (attempt === 0) {
