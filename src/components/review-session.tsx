@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { GRADES, type Grade, type ReviewMode } from "@/lib/leitner";
 import { frameRule } from "@/lib/frame-tags";
+import { resolveSlotIndex, tokenize } from "@/lib/study/types";
 import type { TrainerCard } from "@/lib/study/types";
 import { submitGrade } from "@/app/(app)/study/actions";
 
@@ -102,9 +103,9 @@ export function ReviewSession({ initialQueue, mode, flipDelayMs }: Props) {
       </div>
 
       {revealed ? (
-        <CardBack card={card} />
+        <CardBack card={card} mode={mode} />
       ) : (
-        <CardFront prompt={card.englishPrompt} />
+        <CardFront card={card} mode={mode} />
       )}
 
       {!revealed ? (
@@ -128,11 +129,32 @@ export function ReviewSession({ initialQueue, mode, flipDelayMs }: Props) {
   );
 }
 
-/** Front: the English prompt and nothing else. No hint, no audio. */
-function CardFront({ prompt }: { prompt: string }) {
+const FACE =
+  "flex min-h-[15rem] flex-col items-center justify-center gap-3 rounded-2xl border border-border bg-surface p-6 text-center";
+
+/**
+ * Front.
+ *
+ * Production: the English prompt and nothing else — no hint, no audio.
+ * Cloze: the Gurmukhi sentence with the agreement slot blanked, the English
+ * prompt small underneath for context only.
+ */
+function CardFront({ card, mode }: { card: TrainerCard; mode: ReviewMode }) {
+  if (mode === "cloze") {
+    return (
+      <div className={FACE}>
+        <SlotSentence card={card} treatment="blank" />
+        <p className="text-sm text-muted">{card.englishPrompt}</p>
+        <p className="mt-3 text-sm font-medium text-brand-strong">
+          Say the missing word aloud, then flip.
+        </p>
+      </div>
+    );
+  }
+
   return (
-    <div className="flex min-h-[15rem] flex-col items-center justify-center gap-6 rounded-2xl border border-border bg-surface p-6 text-center">
-      <p className="text-2xl font-bold">{prompt}</p>
+    <div className={`${FACE} gap-6`}>
+      <p className="text-2xl font-bold">{card.englishPrompt}</p>
       <p className="text-sm font-medium text-brand-strong">
         Say the full sentence aloud, then flip.
       </p>
@@ -141,17 +163,63 @@ function CardFront({ prompt }: { prompt: string }) {
 }
 
 /**
+ * The Gurmukhi sentence with its agreement slot either blanked out or picked
+ * out. `resolveSlotIndex` returning null cannot happen here — the cloze queue
+ * filters those cards out precisely so the front never prints the answer — but
+ * blank defensively rather than reveal if it somehow does.
+ */
+function SlotSentence({
+  card,
+  treatment,
+}: {
+  card: TrainerCard;
+  treatment: "blank" | "highlight";
+}) {
+  const parts = tokenize(card.gurmukhi);
+  const slot = resolveSlotIndex(
+    card.gurmukhi,
+    card.slotIndexGurmukhi,
+    card.agreementSlot,
+  );
+
+  return (
+    <p className="font-gurmukhi text-4xl font-semibold leading-relaxed">
+      {parts.map((token, i) => {
+        // Slot unknown: blank everything (safe) rather than highlight
+        // everything (noise).
+        const isSlot = slot === null ? treatment === "blank" : i === slot;
+        if (!isSlot) return <span key={i}>{token} </span>;
+        return treatment === "blank" ? (
+          <span key={i} className="text-muted">
+            ____{" "}
+          </span>
+        ) : (
+          <span key={i} className="rounded bg-accent/20 px-1.5 text-accent">
+            {token}
+          </span>
+        );
+      })}
+    </p>
+  );
+}
+
+/**
  * Back: Gurmukhi is the primary display, romanisation is secondary.
  * Romanisation cannot represent aspiration or tone, and script recognition is
  * being trained in parallel — the type sizes reflect that hierarchy.
  */
-function CardBack({ card }: { card: TrainerCard }) {
+function CardBack({ card, mode }: { card: TrainerCard; mode: ReviewMode }) {
   const rule = frameRule(card.frameTag);
   return (
-    <div className="flex min-h-[15rem] flex-col items-center justify-center gap-3 rounded-2xl border border-border bg-surface p-6 text-center">
-      <p className="font-gurmukhi text-4xl font-semibold leading-relaxed">
-        {card.gurmukhi}
-      </p>
+    <div className={FACE}>
+      {/* Cloze picks the slot out of the full sentence; production shows it whole. */}
+      {mode === "cloze" ? (
+        <SlotSentence card={card} treatment="highlight" />
+      ) : (
+        <p className="font-gurmukhi text-4xl font-semibold leading-relaxed">
+          {card.gurmukhi}
+        </p>
+      )}
       <p className="text-base text-muted">{card.roman}</p>
       <p className="text-sm text-muted">{card.englishPrompt}</p>
 

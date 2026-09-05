@@ -39,10 +39,10 @@ function FrameReference() {
         Frame tags
       </h2>
       <dl className="flex flex-col gap-2.5 text-sm">
-        {Object.entries(FRAME_TAGS).map(([tag, rule]) => (
+        {Object.entries(FRAME_TAGS).map(([tag, entry]) => (
           <div key={tag}>
             <dt className="font-mono text-xs text-brand-strong">{tag}</dt>
-            <dd className="text-muted">{rule}</dd>
+            <dd className="text-muted">{entry.short}</dd>
           </div>
         ))}
       </dl>

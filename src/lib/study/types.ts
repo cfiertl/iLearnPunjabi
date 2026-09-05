@@ -36,6 +36,30 @@ export function tokenize(sentence: string): string[] {
 }
 
 /**
+ * Locate the agreement slot in a sentence.
+ *
+ * Prefers the stored token index, falls back to matching the slot token by
+ * text, and returns null when neither works. Callers MUST treat null as
+ * "cannot be clozed" — blanking nothing would print the answer on the front of
+ * the card.
+ */
+export function resolveSlotIndex(
+  sentence: string,
+  slotIndex: number | null,
+  slotToken: string | null,
+): number | null {
+  const parts = tokenize(sentence);
+  if (slotIndex !== null && slotIndex >= 0 && slotIndex < parts.length) {
+    return slotIndex;
+  }
+  if (slotToken) {
+    const found = parts.indexOf(slotToken.trim());
+    if (found >= 0) return found;
+  }
+  return null;
+}
+
+/**
  * Replace the agreement slot with a visible blank.
  * Falls back to the untouched sentence when the index is missing or stale.
  */

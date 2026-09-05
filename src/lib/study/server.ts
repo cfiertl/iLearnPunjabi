@@ -1,6 +1,7 @@
 import "server-only";
 import { createClient } from "@/lib/supabase/server";
 import type { Box, ReviewMode } from "@/lib/leitner";
+import { resolveSlotIndex } from "@/lib/study/types";
 import type { SessionPrefs, TrainerCard } from "@/lib/study/types";
 
 /** One row of get_study_session: a card, its box, and any attached clip. */
@@ -61,7 +62,18 @@ export async function getStudySession(mode: ReviewMode): Promise<TrainerCard[]> 
     p_mode: mode,
   });
   if (error || !data) return [];
-  return (data as SessionRow[]).map(toCard);
+  const cards = (data as SessionRow[]).map(toCard);
+
+  if (mode !== "cloze") return cards;
+
+  // A cloze card whose slot cannot be located would render its own answer on
+  // the front, so drop it rather than leak it. The SQL only guarantees that an
+  // agreement_slot exists, not that it can be found in the sentence.
+  return cards.filter(
+    (c) =>
+      resolveSlotIndex(c.gurmukhi, c.slotIndexGurmukhi, c.agreementSlot) !==
+      null,
+  );
 }
 
 /**

@@ -41,7 +41,20 @@ export default async function HomePage() {
         <ActionCard
           href="/study"
           title="Production"
-          subtitle="English prompt in, full sentence out"
+          subtitle={
+            stats?.dueProduction
+              ? `${stats.dueProduction} due — English prompt in, full sentence out`
+              : "English prompt in, full sentence out"
+          }
+        />
+        <ActionCard
+          href="/study/cloze"
+          title="Cloze"
+          subtitle={
+            stats?.dueCloze
+              ? `${stats.dueCloze} due — fill the missing agreement`
+              : "Fill the missing agreement"
+          }
         />
         <ActionCard
           href="/cards"
