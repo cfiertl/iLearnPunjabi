@@ -3,10 +3,10 @@ import { createClient } from "@/lib/supabase/server";
 import type { Box, ReviewMode } from "@/lib/leitner";
 import type { SessionPrefs, TrainerCard } from "@/lib/study/types";
 
-/** Shape of a public.cards row, as returned by get_review_queue. */
-type CardRow = {
-  id: string;
-  english: string;
+/** One row of get_study_session: a card, its box, and any attached clip. */
+type SessionRow = {
+  card_id: string;
+  english_prompt: string;
   gurmukhi: string | null;
   roman: string;
   frame_tag: string | null;
@@ -14,10 +14,27 @@ type CardRow = {
   slot_index_roman: number | null;
   slot_index_gurmukhi: number | null;
   notes: string | null;
-  audio_id: string | null;
+  box: Box;
+  audio_url: string | null;
+  audio_speaker: string | null;
 };
 
-type ClipRow = { id: string; url: string; speaker: string };
+function toCard(r: SessionRow): TrainerCard {
+  return {
+    id: r.card_id,
+    englishPrompt: r.english_prompt,
+    gurmukhi: r.gurmukhi ?? "",
+    roman: r.roman,
+    frameTag: r.frame_tag ?? "",
+    agreementSlot: r.agreement_slot,
+    slotIndexRoman: r.slot_index_roman,
+    slotIndexGurmukhi: r.slot_index_gurmukhi,
+    notes: r.notes,
+    audioUrl: r.audio_url,
+    audioSpeaker: r.audio_speaker,
+    box: r.box ?? 1,
+  };
+}
 
 export async function getSessionPrefs(): Promise<SessionPrefs> {
   const supabase = await createClient();
@@ -34,80 +51,29 @@ export async function getSessionPrefs(): Promise<SessionPrefs> {
 }
 
 /**
- * The due queue for one mode: due cards first, then unseen cards up to the
- * daily new-card budget. Boxes and attached audio are joined on afterwards.
+ * A whole study session in one round trip — queue, boxes and audio together.
+ * The RPC applies session_cap and new_per_day server-side, so this no longer
+ * has to wait on a preferences query before it can ask for cards.
  */
-export async function getReviewQueue(
-  mode: ReviewMode,
-  prefs: SessionPrefs,
-): Promise<TrainerCard[]> {
+export async function getStudySession(mode: ReviewMode): Promise<TrainerCard[]> {
   const supabase = await createClient();
-
-  const { data, error } = await supabase.rpc("get_review_queue", {
+  const { data, error } = await supabase.rpc("get_study_session", {
     p_mode: mode,
-    p_limit: prefs.sessionCap,
-    p_new_limit: prefs.newPerDay,
   });
   if (error || !data) return [];
-
-  const rows = data as CardRow[];
-  if (rows.length === 0) return [];
-
-  const [{ data: states }, { data: clips }] = await Promise.all([
-    supabase
-      .from("card_review_state")
-      .select("card_id, box")
-      .eq("mode", mode)
-      .in(
-        "card_id",
-        rows.map((r) => r.id),
-      ),
-    (async () => {
-      const ids = rows.map((r) => r.audio_id).filter((x): x is string => !!x);
-      if (ids.length === 0) return { data: [] as ClipRow[] };
-      return supabase.from("audio_clips").select("id, url, speaker").in("id", ids);
-    })(),
-  ]);
-
-  const boxById = new Map(
-    (states ?? []).map((s) => [s.card_id as string, s.box as Box]),
-  );
-  const clipById = new Map(
-    ((clips ?? []) as ClipRow[]).map((c) => [c.id, c]),
-  );
-
-  return rows.map((r) => {
-    const clip = r.audio_id ? clipById.get(r.audio_id) : undefined;
-    return {
-      id: r.id,
-      englishPrompt: r.english,
-      gurmukhi: r.gurmukhi ?? "",
-      roman: r.roman,
-      frameTag: r.frame_tag ?? "",
-      agreementSlot: r.agreement_slot,
-      slotIndexRoman: r.slot_index_roman,
-      slotIndexGurmukhi: r.slot_index_gurmukhi,
-      notes: r.notes,
-      audioUrl: clip?.url ?? null,
-      audioSpeaker: clip?.speaker ?? null,
-      box: boxById.get(r.id) ?? 1,
-    };
-  });
+  return (data as SessionRow[]).map(toCard);
 }
 
-/** Home screen: what is waiting, and how big the sentence bank is. */
-export async function getDashboardStats(prefs: SessionPrefs) {
+/**
+ * Home screen counts. Every query here is independent, so they run
+ * concurrently — the whole screen costs one round trip, not three.
+ */
+export async function getDashboardStats() {
   const supabase = await createClient();
 
   const [production, cloze, { count: sentenceCards }] = await Promise.all([
-    supabase.rpc("count_review_queue", {
-      p_mode: "production",
-      p_new_limit: prefs.newPerDay,
-    }),
-    supabase.rpc("count_review_queue", {
-      p_mode: "cloze",
-      p_new_limit: prefs.newPerDay,
-    }),
+    supabase.rpc("count_due_reviews", { p_mode: "production" }),
+    supabase.rpc("count_due_reviews", { p_mode: "cloze" }),
     supabase
       .from("cards")
       .select("id", { count: "exact", head: true })

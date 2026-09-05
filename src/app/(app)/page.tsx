@@ -1,10 +1,11 @@
 import Link from "next/link";
 import { isSupabaseConfigured } from "@/lib/env";
-import { getDashboardStats, getSessionPrefs } from "@/lib/study/server";
+import { getDashboardStats } from "@/lib/study/server";
 
 export default async function HomePage() {
-  const prefs = isSupabaseConfigured ? await getSessionPrefs() : null;
-  const stats = prefs ? await getDashboardStats(prefs) : null;
+  // The counts read the daily new-card budget server-side, so the home screen
+  // no longer waits on a preferences query before it can ask for numbers.
+  const stats = isSupabaseConfigured ? await getDashboardStats() : null;
 
   return (
     <div className="flex flex-col gap-6">

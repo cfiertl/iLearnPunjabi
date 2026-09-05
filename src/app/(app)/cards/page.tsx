@@ -1,5 +1,5 @@
 import { isSupabaseConfigured } from "@/lib/env";
-import { getDashboardStats, getSessionPrefs } from "@/lib/study/server";
+import { getDashboardStats } from "@/lib/study/server";
 import { CardManager } from "@/components/card-manager";
 import { FRAME_TAGS } from "@/lib/frame-tags";
 
@@ -27,8 +27,7 @@ async function Body() {
     );
   }
 
-  const prefs = await getSessionPrefs();
-  const stats = await getDashboardStats(prefs);
+  const stats = await getDashboardStats();
   return <CardManager cardCount={stats.cardCount} />;
 }
 

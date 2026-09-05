@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { isSupabaseConfigured } from "@/lib/env";
-import { getReviewQueue, getSessionPrefs } from "@/lib/study/server";
+import { getSessionPrefs, getStudySession } from "@/lib/study/server";
 import { ReviewSession } from "@/components/review-session";
 
 export default async function StudyPage() {
@@ -26,8 +26,11 @@ async function StudyBody() {
     );
   }
 
-  const prefs = await getSessionPrefs();
-  const queue = await getReviewQueue("production", prefs);
+  // Independent queries — fire them together rather than chaining awaits.
+  const [prefs, queue] = await Promise.all([
+    getSessionPrefs(),
+    getStudySession("production"),
+  ]);
 
   if (queue.length === 0) {
     return (
