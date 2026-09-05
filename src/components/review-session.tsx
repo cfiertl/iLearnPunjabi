@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { GRADES, type Grade, type ReviewMode } from "@/lib/leitner";
 import { frameRule } from "@/lib/frame-tags";
@@ -226,11 +227,21 @@ function CardBack({ card, mode }: { card: TrainerCard; mode: ReviewMode }) {
       {card.notes && (
         <p className="mt-2 max-w-sm text-sm text-foreground/80">{card.notes}</p>
       )}
-      {rule && (
-        <p className="mt-1 max-w-sm rounded-lg bg-surface-2 px-3 py-2 text-xs text-muted">
-          {rule}
-        </p>
-      )}
+      {/* Cloze links the rule straight to its row in the frame reference —
+          the only place the reference is wired into app behaviour. */}
+      {rule &&
+        (mode === "cloze" ? (
+          <Link
+            href={`/reference/frames#${card.frameTag}`}
+            className="mt-1 max-w-sm rounded-lg bg-surface-2 px-3 py-2 text-xs text-muted underline decoration-dotted underline-offset-2 hover:text-brand-strong"
+          >
+            {rule}
+          </Link>
+        ) : (
+          <p className="mt-1 max-w-sm rounded-lg bg-surface-2 px-3 py-2 text-xs text-muted">
+            {rule}
+          </p>
+        ))}
 
       {/* Playback lives on the back only — hearing it first defeats the drill. */}
       {card.audioUrl && (

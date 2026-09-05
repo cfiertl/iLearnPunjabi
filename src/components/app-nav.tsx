@@ -8,6 +8,7 @@ const TABS = [
   { href: "/study", label: "Study" },
   { href: "/cards", label: "Cards" },
   { href: "/stats", label: "Progress" },
+  { href: "/reference", label: "Reference" },
 ];
 
 export function AppNav() {

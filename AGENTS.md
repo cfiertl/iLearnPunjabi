@@ -41,13 +41,24 @@ deploy.
 - One `card_review_state` row per **(card, mode)** pair — a card carries two
   independent schedules, `production` and `cloze`.
 
-**Status:** build-plan steps 1–5 complete — data layer, JSON import + seed
+**Status:** build-plan steps 1-7 complete — data layer, JSON import + seed
 batch, production review loop with three-grade grading, Leitner scheduling and
-the due queue, and export.
+the due queue, export, cloze mode, and the statistics view. The reference
+addendum (`/reference`) is built.
 
-Not yet built (steps 6–8, deliberately gated on confirming the core loop feels
-right with real cards first): **cloze mode**, the **statistics view**, and
-**audio capture**. The schema already supports all three.
+**Only step 8 remains: audio capture** (MediaRecorder + speaker tagging). The
+`audio_clips` table and the `card-audio` bucket already exist, and the review UI
+already renders a play button when a card has a clip attached.
+
+`src/lib/frame-tags.ts` is the SINGLE SOURCE OF TRUTH for agreement rules:
+`short` for card backs, `long` with a worked example for the reference. Never
+add a second copy of these rules anywhere.
+
+The reference section is static text authored as components, not markdown, and
+drives no app behaviour. Its only functional coupling is the cloze card back
+linking a `frameTag` to `/reference/frames#<tag>`. Search builds its index by
+walking the rendered tree (`sectionText`), so table content must live in
+`children` rather than props to stay searchable.
 
 Legacy Phase-0/1 tables (`review_state`, `review_logs`, `daily_activity`,
 `usage_events`) still exist but are no longer read; superseded source files are

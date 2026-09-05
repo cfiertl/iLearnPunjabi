@@ -1,7 +1,8 @@
 import { isSupabaseConfigured } from "@/lib/env";
 import { getDashboardStats } from "@/lib/study/server";
 import { CardManager } from "@/components/card-manager";
-import { FRAME_TAGS } from "@/lib/frame-tags";
+import Link from "next/link";
+import { KNOWN_FRAME_TAGS } from "@/lib/frame-tags";
 
 export default async function CardsPage() {
   return (
@@ -31,23 +32,26 @@ async function Body() {
   return <CardManager cardCount={stats.cardCount} />;
 }
 
-/** The tag -> rule table, so the vocabulary for `frameTag` is discoverable. */
+/**
+ * The tag vocabulary lives in the reference section now — one page owns it, so
+ * this one links rather than keeping a second copy that can drift.
+ */
 function FrameReference() {
   return (
     <section className="rounded-2xl border border-border bg-surface p-5">
-      <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted">
+      <h2 className="mb-2 text-sm font-semibold uppercase tracking-wide text-muted">
         Frame tags
       </h2>
-      <dl className="flex flex-col gap-2.5 text-sm">
-        {Object.entries(FRAME_TAGS).map(([tag, entry]) => (
-          <div key={tag}>
-            <dt className="font-mono text-xs text-brand-strong">{tag}</dt>
-            <dd className="text-muted">{entry.short}</dd>
-          </div>
-        ))}
-      </dl>
-      <p className="mt-3 text-xs text-muted">
-        Other tags are accepted on import — they just come through without a
+      <p className="text-sm text-muted">
+        {KNOWN_FRAME_TAGS.length} recognised tags, each with its agreement rule,
+        are listed in the{" "}
+        <Link
+          href="/reference/frames"
+          className="text-brand-strong underline"
+        >
+          frame reference
+        </Link>
+        . Other tags are accepted on import — they just come through without a
         rule reminder.
       </p>
     </section>
