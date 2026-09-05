@@ -115,3 +115,19 @@ files are excluded.
 - Superseded files (AI tutor chat, spend tracking, FSRS, the word-level starter
   deck) are parked in `.archive/` rather than deleted, since this folder is not
   under version control. Delete it when you are happy.
+
+## Function region — do not skip this
+
+`vercel.json` pins serverless functions to **`sin1` (Singapore)**, the same
+region as the Supabase project. This is the single biggest lever on how fast the
+app feels, and it is easy to lose in a redeploy or a platform move.
+
+A page render makes several round trips to Postgres but only one back to the
+browser, so the function wants to sit beside the *database*, not beside you.
+Hosted in Ohio (Netlify's default) against a Singapore database, each of those
+round trips cost ~250ms and pages took over two seconds. Co-located, they cost
+single-digit milliseconds.
+
+If the Supabase project ever moves region, move this to match. Vercel's free
+Hobby plan allows one region, chosen freely; Netlify's region setting is
+Pro-only, which is why this app is on Vercel.
