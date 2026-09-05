@@ -1,0 +1,65 @@
+@import "tailwindcss";
+
+/* ---- Design tokens (light) ---- */
+:root {
+  --background: #faf7f2;
+  --surface: #ffffff;
+  --surface-2: #f4efe6;
+  --foreground: #211c15;
+  --muted: #6f6656;
+  --border: #e7ded0;
+
+  /* Brand: warm saffron/amber (Punjabi-inspired) */
+  --brand: #e8820c;
+  --brand-strong: #c96908;
+  --brand-contrast: #ffffff;
+
+  /* Accent: deep indigo */
+  --accent: #3b3b8f;
+  --success: #2f9e57;
+  --danger: #d64545;
+}
+
+/* ---- Design tokens (dark) ---- */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: #17130d;
+    --surface: #211b13;
+    --surface-2: #2a2318;
+    --foreground: #f2ece1;
+    --muted: #a99e8a;
+    --border: #372f22;
+
+    --brand: #f59e2c;
+    --brand-strong: #e8820c;
+    --brand-contrast: #1a1206;
+
+    --accent: #8a8af0;
+    --success: #4fbf78;
+    --danger: #ef6b6b;
+  }
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-foreground: var(--foreground);
+  --color-muted: var(--muted);
+  --color-border: var(--border);
+  --color-brand: var(--brand);
+  --color-brand-strong: var(--brand-strong);
+  --color-brand-contrast: var(--brand-contrast);
+  --color-accent: var(--accent);
+  --color-success: var(--success);
+  --color-danger: var(--danger);
+
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+  --font-gurmukhi: var(--font-noto-gurmukhi), var(--font-geist-sans), sans-serif;
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+}

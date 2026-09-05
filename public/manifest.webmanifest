@@ -1,0 +1,26 @@
+{
+  "name": "ILearnPunjabi",
+  "short_name": "Punjabi",
+  "description": "A personal Punjabi tutor — speak & listen your way from A2 to fluency.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#faf7f2",
+  "theme_color": "#e8820c",
+  "categories": ["education"],
+  "icons": [
+    {
+      "src": "/icons/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/maskable.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "maskable"
+    }
+  ]
+}
