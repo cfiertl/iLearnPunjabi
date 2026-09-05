@@ -27,6 +27,7 @@ export function ReviewSession({ initialQueue, mode, flipDelayMs }: Props) {
   const [revealed, setRevealed] = useState(false);
   const [busy, setBusy] = useState(false);
   const [tally, setTally] = useState({ correct: 0, agreement: 0, fail: 0 });
+  const [saveError, setSaveError] = useState<string | null>(null);
 
   const card = queue[index];
   const done = !card;
@@ -35,12 +36,32 @@ export function ReviewSession({ initialQueue, mode, flipDelayMs }: Props) {
     async (grade: Grade) => {
       if (busy || !card) return;
       setBusy(true);
-      try {
-        await submitGrade(card.id, mode, grade);
-      } catch {
-        // The session keeps moving even if a write hiccups; the card simply
-        // stays due and comes back around.
+      setSaveError(null);
+
+      // A grade that does not reach the server must never look like it did.
+      // review_events is the diagnostic record the whole app exists to
+      // produce, so a silently dropped write costs more than the interruption
+      // of asking for the grade again. One quiet retry, then stop and say so.
+      let saved = false;
+      for (let attempt = 0; attempt < 2 && !saved; attempt++) {
+        try {
+          await submitGrade(card.id, mode, grade);
+          saved = true;
+        } catch {
+          if (attempt === 0) {
+            await new Promise((resolve) => setTimeout(resolve, 600));
+          }
+        }
       }
+
+      if (!saved) {
+        setSaveError(
+          "That grade didn't save — check your connection and grade it again.",
+        );
+        setBusy(false);
+        return; // stay on this card; nothing was recorded
+      }
+
       setTally((t) => ({ ...t, [grade]: t[grade] + 1 }));
       setBusy(false);
       setRevealed(false);
@@ -113,6 +134,14 @@ export function ReviewSession({ initialQueue, mode, flipDelayMs }: Props) {
         <FlipButton delayMs={flipDelayMs} onFlip={() => setRevealed(true)} />
       ) : (
         <div className="flex flex-col gap-2">
+          {saveError && (
+            <p
+              role="alert"
+              className="rounded-xl border border-danger/40 bg-danger/10 px-4 py-3 text-sm text-danger"
+            >
+              {saveError}
+            </p>
+          )}
           {GRADES.map((g) => (
             <button
               key={g.grade}
@@ -121,7 +150,9 @@ export function ReviewSession({ initialQueue, mode, flipDelayMs }: Props) {
               className={`flex items-center justify-between rounded-xl px-4 py-3.5 text-left text-sm font-semibold transition disabled:opacity-50 ${g.cls}`}
             >
               <span>{g.label}</span>
-              <span className="text-xs opacity-60">{g.key}</span>
+              <span className="text-xs opacity-60">
+                {busy ? "…" : g.key}
+              </span>
             </button>
           ))}
         </div>
