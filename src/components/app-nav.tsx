@@ -7,7 +7,7 @@ const TABS = [
   { href: "/", label: "Home" },
   { href: "/study", label: "Study" },
   { href: "/cards", label: "Cards" },
-  { href: "/settings", label: "Settings" },
+  { href: "/stats", label: "Progress" },
 ];
 
 export function AppNav() {
