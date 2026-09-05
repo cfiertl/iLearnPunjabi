@@ -14,7 +14,7 @@ export function CardManager({ cardCount }: { cardCount: number }) {
   const router = useRouter();
   const [raw, setRaw] = useState("");
   const [preview, setPreview] = useState<ImportPreview | null>(null);
-  const [busy, setBusy] = useState<null | "check" | "import" | "seed" | "export">(null);
+  const [busy, setBusy] = useState<null | "check" | "import" | "seed" | "export" | "copy">(null);
   const [result, setResult] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
@@ -64,6 +64,32 @@ export function CardManager({ cardCount }: { cardCount: number }) {
       router.refresh();
     } catch (e) {
       setResult(e instanceof Error ? e.message : "Could not load the seed batch.");
+    }
+    setBusy(null);
+  }
+
+  async function copy() {
+    setBusy("copy");
+    setResult(null);
+    try {
+      // Safari drops the user-activation that permits a clipboard write once
+      // an await intervenes, so hand the clipboard the pending export as a
+      // promise rather than fetching it first. writeText covers browsers
+      // without ClipboardItem.
+      if (typeof ClipboardItem !== "undefined") {
+        await navigator.clipboard.write([
+          new ClipboardItem({
+            "text/plain": exportAll().then(
+              (json) => new Blob([json], { type: "text/plain" }),
+            ),
+          }),
+        ]);
+      } else {
+        await navigator.clipboard.writeText(await exportAll());
+      }
+      setResult("Export copied — paste it into the session.");
+    } catch {
+      setResult("Couldn't reach the clipboard. Use Download instead.");
     }
     setBusy(null);
   }
@@ -149,15 +175,25 @@ export function CardManager({ cardCount }: { cardCount: number }) {
         </h2>
         <p className="text-sm text-muted">
           Every card, schedule, and review event as pretty-printed JSON — ready
-          to paste into a tutoring conversation. Audio files are not included.
+          to paste into a session. Audio files are not included.
         </p>
-        <button
-          onClick={download}
-          disabled={busy !== null}
-          className="self-start rounded-lg border border-border px-4 py-2 text-sm font-medium hover:border-brand disabled:opacity-50"
-        >
-          {busy === "export" ? "Preparing…" : "Download JSON"}
-        </button>
+        <div className="flex flex-wrap gap-2">
+          {/* Copy leads: the ritual is pasting it into the conversation. */}
+          <button
+            onClick={copy}
+            disabled={busy !== null}
+            className="rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-brand-contrast hover:bg-brand-strong disabled:opacity-50"
+          >
+            {busy === "copy" ? "Copying…" : "Copy to clipboard"}
+          </button>
+          <button
+            onClick={download}
+            disabled={busy !== null}
+            className="rounded-lg border border-border px-4 py-2 text-sm font-medium hover:border-brand disabled:opacity-50"
+          >
+            {busy === "export" ? "Preparing…" : "Download JSON"}
+          </button>
+        </div>
       </section>
 
       {/* Seed */}
