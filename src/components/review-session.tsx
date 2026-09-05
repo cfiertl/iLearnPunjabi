@@ -15,12 +15,18 @@ type Props = {
 
 export function ReviewSession({ initialQueue, mode, flipDelayMs }: Props) {
   const router = useRouter();
+
+  // Snapshot the queue for the life of the session. Grading calls a server
+  // action, which refreshes this route and re-runs the due query — the card
+  // just graded drops out, so the array would shrink under us and `index`
+  // would land on the wrong card, silently skipping every other one.
+  const [queue] = useState(initialQueue);
   const [index, setIndex] = useState(0);
   const [revealed, setRevealed] = useState(false);
   const [busy, setBusy] = useState(false);
   const [tally, setTally] = useState({ correct: 0, agreement: 0, fail: 0 });
 
-  const card = initialQueue[index];
+  const card = queue[index];
   const done = !card;
 
   const rate = useCallback(
@@ -76,14 +82,14 @@ export function ReviewSession({ initialQueue, mode, flipDelayMs }: Props) {
     );
   }
 
-  const progress = Math.round((index / initialQueue.length) * 100);
+  const progress = Math.round((index / queue.length) * 100);
 
   return (
     <div className="flex flex-col gap-5">
       <div>
         <div className="mb-1.5 flex justify-between text-xs text-muted">
           <span>
-            {index + 1} / {initialQueue.length}
+            {index + 1} / {queue.length}
           </span>
           <span>Box {card.box}</span>
         </div>
