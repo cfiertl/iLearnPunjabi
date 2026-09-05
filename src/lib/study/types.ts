@@ -22,11 +22,40 @@ export type TrainerCard = {
   box: Box;
 };
 
+/**
+ * Which script leads on a card, and which one cloze blanks.
+ *
+ * `roman_primary` is the default: romanisation large, Gurmukhi small beneath,
+ * and cloze blanks the romanised token. `gurmukhi_primary` inverts that, and is
+ * for once the script is actually readable.
+ */
+export type ScriptMode = "roman_primary" | "gurmukhi_primary";
+
+export function isScriptMode(value: unknown): value is ScriptMode {
+  return value === "roman_primary" || value === "gurmukhi_primary";
+}
+
 export type SessionPrefs = {
   sessionCap: number;
   newPerDay: number;
   flipDelayMs: number;
+  scriptMode: ScriptMode;
 };
+
+/** The sentence and slot index cloze operates on, for the current mode. */
+export function primaryText(
+  card: {
+    roman: string;
+    gurmukhi: string;
+    slotIndexRoman: number | null;
+    slotIndexGurmukhi: number | null;
+  },
+  scriptMode: ScriptMode,
+): { text: string; slotIndex: number | null } {
+  return scriptMode === "gurmukhi_primary"
+    ? { text: card.gurmukhi, slotIndex: card.slotIndexGurmukhi }
+    : { text: card.roman, slotIndex: card.slotIndexRoman };
+}
 
 export type { ReviewMode };
 
@@ -74,4 +103,17 @@ export function blankSlot(
   }
   parts[slotIndex] = blank;
   return parts.join(" ");
+}
+
+/**
+ * Can this card be clozed in the current script mode?
+ *
+ * A card whose slot cannot be located in the script being displayed would show
+ * its own answer on the front, so it must be excluded from the queue. Note the
+ * answer differs per mode: `agreementSlot` holds the romanised token, so for
+ * Gurmukhi only the stored index can resolve it.
+ */
+export function isClozeable(card: TrainerCard, scriptMode: ScriptMode): boolean {
+  const { text, slotIndex } = primaryText(card, scriptMode);
+  return resolveSlotIndex(text, slotIndex, card.agreementSlot) !== null;
 }

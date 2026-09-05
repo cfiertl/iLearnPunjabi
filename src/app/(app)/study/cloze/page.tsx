@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { isSupabaseConfigured } from "@/lib/env";
 import { getSessionPrefs, getStudySession } from "@/lib/study/server";
+import { isClozeable } from "@/lib/study/types";
 import { ReviewSession } from "@/components/review-session";
 
 export default async function ClozePage() {
@@ -26,10 +27,14 @@ async function ClozeBody() {
     );
   }
 
-  const [prefs, queue] = await Promise.all([
+  const [prefs, all] = await Promise.all([
     getSessionPrefs(),
     getStudySession("cloze"),
   ]);
+
+  // Drop cards whose slot cannot be located in the script being blanked —
+  // otherwise the front would print the answer it is meant to hide.
+  const queue = all.filter((c) => isClozeable(c, prefs.scriptMode));
 
   if (queue.length === 0) {
     return (
@@ -50,6 +55,7 @@ async function ClozeBody() {
       initialQueue={queue}
       mode="cloze"
       flipDelayMs={prefs.flipDelayMs}
+      scriptMode={prefs.scriptMode}
     />
   );
 }

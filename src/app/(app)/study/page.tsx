@@ -49,6 +49,7 @@ async function StudyBody() {
       initialQueue={queue}
       mode="production"
       flipDelayMs={prefs.flipDelayMs}
+      scriptMode={prefs.scriptMode}
     />
   );
 }

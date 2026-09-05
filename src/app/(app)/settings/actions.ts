@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import { isScriptMode } from "@/lib/study/types";
 
 export async function updateSettings(formData: FormData) {
   const supabase = await createClient();
@@ -15,7 +16,11 @@ export async function updateSettings(formData: FormData) {
   // A checkbox is absent from the payload when unchecked.
   const friction = formData.get("flip_friction") !== null;
 
-  const patch: Record<string, number> = {};
+  const patch: Record<string, number | string> = {};
+
+  const script = formData.get("script_mode");
+  if (isScriptMode(script)) patch.script_mode = script;
+
   if (Number.isFinite(cap) && cap >= 1) patch.session_cap = Math.round(cap);
   if (Number.isFinite(newPerDay) && newPerDay >= 0) {
     patch.new_per_day = Math.round(newPerDay);
@@ -30,4 +35,5 @@ export async function updateSettings(formData: FormData) {
 
   revalidatePath("/settings");
   revalidatePath("/study");
+  revalidatePath("/study/cloze");
 }

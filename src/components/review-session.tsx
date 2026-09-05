@@ -5,17 +5,23 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { GRADES, type Grade, type ReviewMode } from "@/lib/leitner";
 import { frameRule } from "@/lib/frame-tags";
-import { resolveSlotIndex, tokenize } from "@/lib/study/types";
-import type { TrainerCard } from "@/lib/study/types";
+import { primaryText, resolveSlotIndex, tokenize } from "@/lib/study/types";
+import type { ScriptMode, TrainerCard } from "@/lib/study/types";
 import { submitGrade } from "@/app/(app)/study/actions";
 
 type Props = {
   initialQueue: TrainerCard[];
   mode: ReviewMode;
   flipDelayMs: number;
+  scriptMode: ScriptMode;
 };
 
-export function ReviewSession({ initialQueue, mode, flipDelayMs }: Props) {
+export function ReviewSession({
+  initialQueue,
+  mode,
+  flipDelayMs,
+  scriptMode,
+}: Props) {
   const router = useRouter();
 
   // Snapshot the queue for the life of the session. Grading calls a server
@@ -125,9 +131,9 @@ export function ReviewSession({ initialQueue, mode, flipDelayMs }: Props) {
       </div>
 
       {revealed ? (
-        <CardBack card={card} mode={mode} />
+        <CardBack card={card} mode={mode} scriptMode={scriptMode} />
       ) : (
-        <CardFront card={card} mode={mode} />
+        <CardFront card={card} mode={mode} scriptMode={scriptMode} />
       )}
 
       {!revealed ? (
@@ -168,14 +174,24 @@ const FACE =
  * Front.
  *
  * Production: the English prompt and nothing else — no hint, no audio.
- * Cloze: the Gurmukhi sentence with the agreement slot blanked, the English
- * prompt small underneath for context only.
+ * Cloze: the primary-script sentence with the agreement slot blanked, the
+ * English prompt small underneath for context only.
  */
-function CardFront({ card, mode }: { card: TrainerCard; mode: ReviewMode }) {
+function CardFront({
+  card,
+  mode,
+  scriptMode,
+}: {
+  card: TrainerCard;
+  mode: ReviewMode;
+  scriptMode: ScriptMode;
+}) {
   if (mode === "cloze") {
     return (
       <div className={FACE}>
-        <SlotSentence card={card} treatment="blank" />
+        {/* Only the primary script appears here. Showing the other one would
+            print the very token being blanked. */}
+        <SlotSentence card={card} treatment="blank" scriptMode={scriptMode} />
         <p className="text-sm text-muted">{card.englishPrompt}</p>
         {/* The whole sentence, not the missing word alone: it still isolates
             the agreement decision, and costs nothing to get production reps
@@ -198,27 +214,34 @@ function CardFront({ card, mode }: { card: TrainerCard; mode: ReviewMode }) {
 }
 
 /**
- * The Gurmukhi sentence with its agreement slot either blanked out or picked
- * out. `resolveSlotIndex` returning null cannot happen here — the cloze queue
- * filters those cards out precisely so the front never prints the answer — but
- * blank defensively rather than reveal if it somehow does.
+ * The sentence — in whichever script leads — with its agreement slot either
+ * blanked out or picked out. `resolveSlotIndex` returning null cannot happen
+ * here, since the cloze queue drops those cards precisely so the front never
+ * prints the answer, but blank defensively rather than reveal if it somehow
+ * does.
  */
 function SlotSentence({
   card,
   treatment,
+  scriptMode,
 }: {
   card: TrainerCard;
   treatment: "blank" | "highlight";
+  scriptMode: ScriptMode;
 }) {
-  const parts = tokenize(card.gurmukhi);
-  const slot = resolveSlotIndex(
-    card.gurmukhi,
-    card.slotIndexGurmukhi,
-    card.agreementSlot,
-  );
+  const { text, slotIndex } = primaryText(card, scriptMode);
+  const gurmukhi = scriptMode === "gurmukhi_primary";
+  const parts = tokenize(text);
+  const slot = resolveSlotIndex(text, slotIndex, card.agreementSlot);
 
   return (
-    <p className="font-gurmukhi text-4xl font-semibold leading-relaxed">
+    <p
+      className={
+        gurmukhi
+          ? "font-gurmukhi text-4xl font-semibold leading-relaxed"
+          : "text-3xl font-bold leading-relaxed"
+      }
+    >
       {parts.map((token, i) => {
         // Slot unknown: blank everything (safe) rather than highlight
         // everything (noise).
@@ -243,19 +266,37 @@ function SlotSentence({
  * Romanisation cannot represent aspiration or tone, and script recognition is
  * being trained in parallel — the type sizes reflect that hierarchy.
  */
-function CardBack({ card, mode }: { card: TrainerCard; mode: ReviewMode }) {
+function CardBack({
+  card,
+  mode,
+  scriptMode,
+}: {
+  card: TrainerCard;
+  mode: ReviewMode;
+  scriptMode: ScriptMode;
+}) {
   const rule = frameRule(card.frameTag);
+  const gurmukhiFirst = scriptMode === "gurmukhi_primary";
+
   return (
     <div className={FACE}>
       {/* Cloze picks the slot out of the full sentence; production shows it whole. */}
       {mode === "cloze" ? (
-        <SlotSentence card={card} treatment="highlight" />
-      ) : (
+        <SlotSentence card={card} treatment="highlight" scriptMode={scriptMode} />
+      ) : gurmukhiFirst ? (
         <p className="font-gurmukhi text-4xl font-semibold leading-relaxed">
           {card.gurmukhi}
         </p>
+      ) : (
+        <p className="text-3xl font-bold leading-relaxed">{card.roman}</p>
       )}
-      <p className="text-base text-muted">{card.roman}</p>
+
+      {/* The secondary script sits underneath, smaller. */}
+      {gurmukhiFirst ? (
+        <p className="text-base text-muted">{card.roman}</p>
+      ) : (
+        <p className="font-gurmukhi text-lg text-muted">{card.gurmukhi}</p>
+      )}
       <p className="text-sm text-muted">{card.englishPrompt}</p>
 
       {card.notes && (

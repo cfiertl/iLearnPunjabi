@@ -1,7 +1,7 @@
 import "server-only";
 import { createClient } from "@/lib/supabase/server";
 import type { Box, ReviewMode } from "@/lib/leitner";
-import { resolveSlotIndex } from "@/lib/study/types";
+import { isScriptMode } from "@/lib/study/types";
 import type { SessionPrefs, TrainerCard } from "@/lib/study/types";
 
 /** One row of get_study_session: a card, its box, and any attached clip. */
@@ -41,13 +41,16 @@ export async function getSessionPrefs(): Promise<SessionPrefs> {
   const supabase = await createClient();
   const { data } = await supabase
     .from("user_settings")
-    .select("session_cap, new_per_day, flip_delay_ms")
+    .select("session_cap, new_per_day, flip_delay_ms, script_mode")
     .maybeSingle();
 
   return {
     sessionCap: data?.session_cap ?? 30,
     newPerDay: data?.new_per_day ?? 10,
     flipDelayMs: data?.flip_delay_ms ?? 1500,
+    scriptMode: isScriptMode(data?.script_mode)
+      ? data.script_mode
+      : "roman_primary",
   };
 }
 
@@ -62,18 +65,12 @@ export async function getStudySession(mode: ReviewMode): Promise<TrainerCard[]> 
     p_mode: mode,
   });
   if (error || !data) return [];
-  const cards = (data as SessionRow[]).map(toCard);
 
-  if (mode !== "cloze") return cards;
-
-  // A cloze card whose slot cannot be located would render its own answer on
-  // the front, so drop it rather than leak it. The SQL only guarantees that an
-  // agreement_slot exists, not that it can be found in the sentence.
-  return cards.filter(
-    (c) =>
-      resolveSlotIndex(c.gurmukhi, c.slotIndexGurmukhi, c.agreementSlot) !==
-      null,
-  );
+  // Cloze cards whose slot cannot be located must be dropped, but which script
+  // is blanked is now a preference — so the caller filters with isClozeable
+  // once it knows the mode, rather than this fetching preferences first and
+  // costing an extra serial round trip.
+  return (data as SessionRow[]).map(toCard);
 }
 
 /**

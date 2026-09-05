@@ -28,6 +28,41 @@ export default async function SettingsPage() {
           Session
         </h2>
 
+        <fieldset className="flex flex-col gap-2">
+          <legend className="text-sm font-medium">Script</legend>
+          <span className="text-xs text-muted">
+            Which script leads on a card, and which one cloze blanks out.
+          </span>
+          {(
+            [
+              {
+                value: "roman_primary",
+                title: "Romanisation first",
+                hint: "Roman large, Gurmukhi small beneath it. Cloze blanks the romanised word.",
+              },
+              {
+                value: "gurmukhi_primary",
+                title: "Gurmukhi first",
+                hint: "Gurmukhi large, romanisation beneath. Switch to this once you can read the script.",
+              },
+            ] as const
+          ).map((opt) => (
+            <label key={opt.value} className="flex items-start gap-3">
+              <input
+                type="radio"
+                name="script_mode"
+                value={opt.value}
+                defaultChecked={prefs.scriptMode === opt.value}
+                className="mt-1 h-4 w-4 accent-[var(--brand)]"
+              />
+              <span>
+                <span className="text-sm font-medium">{opt.title}</span>
+                <span className="block text-xs text-muted">{opt.hint}</span>
+              </span>
+            </label>
+          ))}
+        </fieldset>
+
         <label className="flex flex-col gap-1.5">
           <span className="text-sm font-medium">Reviews per session</span>
           <input
