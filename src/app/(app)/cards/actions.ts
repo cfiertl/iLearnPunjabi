@@ -139,10 +139,27 @@ export async function runImport(raw: string) {
   if (rows.length > 0) {
     const { error } = await supabase.from("cards").insert(rows);
     if (error) throw error;
+
+    // A freeze that has produced cards is done. Without this it sits in the
+    // triage queue forever, and a queue that shows resolved work stops being a
+    // reliable picture of what is outstanding — which is how the whole freeze
+    // pipeline quietly dies.
+    const freezeIds = [
+      ...new Set(
+        rows.map((r) => r.freeze_id).filter((x): x is string => typeof x === "string"),
+      ),
+    ];
+    if (freezeIds.length > 0) {
+      await supabase
+        .from("freezes")
+        .update({ resolved: true })
+        .in("id", freezeIds);
+    }
   }
 
   revalidatePath("/cards");
   revalidatePath("/study");
+  revalidatePath("/freezes");
   revalidatePath("/");
   return { ok: true, added: rows.length, skipped, errors };
 }
@@ -234,4 +251,79 @@ export async function exportAll(): Promise<string> {
   };
 
   return JSON.stringify(payload, null, 2);
+}
+
+// ---------------------------------------------------------------------------
+// Card management
+// ---------------------------------------------------------------------------
+
+export type CardEdit = {
+  englishPrompt: string;
+  roman: string;
+  gurmukhi: string;
+  frameTag: string;
+  agreementSlot: string | null;
+  slotIndexRoman: number | null;
+  slotIndexGurmukhi: number | null;
+  familyVariant: string | null;
+  notes: string | null;
+  verified: boolean;
+};
+
+/**
+ * Edit a card in place.
+ *
+ * The point of this is corrections from the family: when Jasmine says her
+ * family says it differently, the card changes. Anything else means a
+ * re-import or SQL for every correction.
+ *
+ * Slot indices are stored rather than re-derived, because editing the wording
+ * moves the agreement slot — the edit form resolves the index from the token
+ * the user picks, so the two cannot drift apart.
+ */
+export async function updateCard(id: string, patch: CardEdit) {
+  const english = patch.englishPrompt.trim();
+  const roman = patch.roman.trim();
+  if (!english || !roman) throw new Error("English and romanisation are required");
+
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("cards")
+    .update({
+      english,
+      roman,
+      gurmukhi: patch.gurmukhi.trim() || null,
+      frame_tag: patch.frameTag.trim() || null,
+      agreement_slot: patch.agreementSlot?.trim() || null,
+      slot_index_roman: patch.slotIndexRoman,
+      slot_index_gurmukhi: patch.slotIndexGurmukhi,
+      family_variant: patch.familyVariant?.trim() || null,
+      notes: patch.notes?.trim() || null,
+      verified: patch.verified,
+    })
+    .eq("id", id);
+  if (error) throw error;
+
+  revalidatePath("/cards");
+  revalidatePath(`/cards/${id}`);
+  revalidatePath("/study");
+  revalidatePath("/study/cloze");
+  return { ok: true };
+}
+
+/**
+ * Retire or restore a card. Soft delete on purpose: a hard delete cascades to
+ * review_events, and that log is never pruned. A retired card leaves every
+ * review it produced intact in the record.
+ */
+export async function setCardActive(id: string, active: boolean) {
+  const supabase = await createClient();
+  const { error } = await supabase.from("cards").update({ active }).eq("id", id);
+  if (error) throw error;
+
+  revalidatePath("/cards");
+  revalidatePath(`/cards/${id}`);
+  revalidatePath("/study");
+  revalidatePath("/");
+  return { ok: true };
 }

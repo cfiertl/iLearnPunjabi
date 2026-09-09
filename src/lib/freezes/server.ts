@@ -11,7 +11,9 @@ type Row = {
   resolved: boolean;
 };
 
-function toFreeze(row: Row, cardIds: string[] = []): Freeze {
+type CardLink = { id: string; englishPrompt: string };
+
+function toFreeze(row: Row, cards: CardLink[] = []): Freeze {
   return {
     id: row.id,
     english: row.english,
@@ -19,7 +21,7 @@ function toFreeze(row: Row, cardIds: string[] = []): Freeze {
     bucket: row.bucket,
     note: row.note,
     resolved: row.resolved,
-    cardIds,
+    cards,
   };
 }
 
@@ -47,16 +49,20 @@ export async function getFreezes(): Promise<FreezeLists> {
       .from("freezes")
       .select("id, english, captured_at, bucket, note, resolved")
       .order("captured_at", { ascending: false }),
-    supabase.from("cards").select("id, freeze_id").not("freeze_id", "is", null),
+    supabase
+      .from("cards")
+      .select("id, english, freeze_id")
+      .not("freeze_id", "is", null),
   ]);
 
-  const cardsByFreeze = new Map<string, string[]>();
+  const cardsByFreeze = new Map<string, CardLink[]>();
   for (const c of (cardRes.data ?? []) as {
     id: string;
+    english: string;
     freeze_id: string;
   }[]) {
     const list = cardsByFreeze.get(c.freeze_id) ?? [];
-    list.push(c.id);
+    list.push({ id: c.id, englishPrompt: c.english });
     cardsByFreeze.set(c.freeze_id, list);
   }
 

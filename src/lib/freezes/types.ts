@@ -35,5 +35,5 @@ export type Freeze = {
   note: string | null;
   resolved: boolean;
   /** Cards this freeze produced. Display-only; never affects scheduling. */
-  cardIds: string[];
+  cards: { id: string; englishPrompt: string }[];
 };

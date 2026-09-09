@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { BUCKETS, type Bucket, type Freeze } from "@/lib/freezes/types";
 import {
@@ -135,10 +136,22 @@ function DoneRow({ freeze }: { freeze: Freeze }) {
         <p className="text-xs text-muted">
           {freeze.bucket ? `Bucket ${freeze.bucket}` : "Discarded"}
           {freeze.note ? ` · ${freeze.note}` : ""}
-          {freeze.cardIds.length > 0
-            ? ` · ${freeze.cardIds.length} card${freeze.cardIds.length === 1 ? "" : "s"}`
-            : ""}
         </p>
+        {/* The cards this freeze became. Display-only. */}
+        {freeze.cards.length > 0 && (
+          <ul className="mt-1 flex flex-col gap-0.5">
+            {freeze.cards.map((c) => (
+              <li key={c.id}>
+                <Link
+                  href={`/cards/${c.id}`}
+                  className="text-xs text-brand-strong underline"
+                >
+                  {c.englishPrompt}
+                </Link>
+              </li>
+            ))}
+          </ul>
+        )}
       </div>
       <button
         disabled={pending}
