@@ -6,6 +6,15 @@ import { importKey, parseImport } from "@/lib/cards/import";
 import { SEED_DECK_NAME, SEED_SENTENCES } from "@/content/seed-cards";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
+type FreezeRow = {
+  id: string;
+  english: string;
+  captured_at: string;
+  bucket: string | null;
+  note: string | null;
+  resolved: boolean;
+};
+
 export type ImportPreview = {
   ok: boolean;
   total: number;
@@ -120,6 +129,9 @@ export async function runImport(raw: string) {
       slot_index_roman: c.slotIndexRoman,
       slot_index_gurmukhi: c.slotIndexGurmukhi,
       notes: c.notes,
+      family_variant: c.familyVariant,
+      verified: c.verified,
+      freeze_id: c.freezeId,
       active: true,
     });
   }
@@ -152,12 +164,17 @@ export async function exportAll(): Promise<string> {
   } = await supabase.auth.getUser();
   if (!user) throw new Error("Not authenticated");
 
-  const [{ data: cards }, { data: state }, { data: events }, { data: clips }] =
-    await Promise.all([
+  const [
+    { data: cards },
+    { data: state },
+    { data: events },
+    { data: clips },
+    { data: freezes },
+  ] = await Promise.all([
       supabase
         .from("cards")
         .select(
-          "id, english, gurmukhi, roman, frame_tag, agreement_slot, slot_index_roman, slot_index_gurmukhi, notes, audio_id, active, created_at",
+          "id, english, gurmukhi, roman, frame_tag, agreement_slot, slot_index_roman, slot_index_gurmukhi, notes, audio_id, active, created_at, family_variant, verified, freeze_id",
         )
         .not("frame_tag", "is", null)
         .order("created_at"),
@@ -165,11 +182,26 @@ export async function exportAll(): Promise<string> {
       supabase.from("review_events").select("*").order("reviewed_at"),
       // Metadata only — blobs stay in Storage.
       supabase.from("audio_clips").select("id, speaker, duration_ms, recorded_at"),
+      // Everything, including untriaged and discarded. Untriaged rows are the
+      // most useful ones in the file, so they are never filtered or summarised.
+      supabase
+        .from("freezes")
+        .select("id, english, captured_at, bucket, note, resolved")
+        .order("captured_at"),
     ]);
+
+  // cardIds is stored the other way round (cards.freeze_id), so derive it.
+  const cardsByFreeze = new Map<string, string[]>();
+  for (const c of (cards ?? []) as { id: string; freeze_id: string | null }[]) {
+    if (!c.freeze_id) continue;
+    const list = cardsByFreeze.get(c.freeze_id) ?? [];
+    list.push(c.id);
+    cardsByFreeze.set(c.freeze_id, list);
+  }
 
   const payload = {
     exportedAt: new Date().toISOString(),
-    schema: "punjabi-srs/1",
+    schema: "punjabi-srs/2",
     cards: (cards ?? []).map((c) => ({
       id: c.id,
       englishPrompt: c.english,
@@ -183,10 +215,22 @@ export async function exportAll(): Promise<string> {
       audioId: c.audio_id,
       active: c.active,
       createdAt: c.created_at,
+      familyVariant: c.family_variant,
+      verified: c.verified,
+      freezeId: c.freeze_id,
     })),
     reviewState: state ?? [],
     reviewEvents: events ?? [],
     audioClips: clips ?? [],
+    freezes: ((freezes ?? []) as FreezeRow[]).map((f) => ({
+      id: f.id,
+      english: f.english,
+      capturedAt: f.captured_at,
+      bucket: f.bucket,
+      note: f.note,
+      resolved: f.resolved,
+      cardIds: cardsByFreeze.get(f.id) ?? [],
+    })),
   };
 
   return JSON.stringify(payload, null, 2);

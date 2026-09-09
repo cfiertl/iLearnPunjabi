@@ -20,6 +20,9 @@ export type TrainerCard = {
   audioUrl: string | null;
   audioSpeaker: string | null;
   box: Box;
+  /** The family form. Authoritative where present; display-only. */
+  familyVariant: string | null;
+  verified: boolean;
 };
 
 /**

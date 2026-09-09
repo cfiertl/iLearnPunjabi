@@ -1,5 +1,6 @@
 import { AppHeader } from "@/components/app-header";
 import { AppNav } from "@/components/app-nav";
+import { FreezeButton } from "@/components/freeze-button";
 
 // Deliberately does NOT call getUser(). Everything under (app) is already
 // gated by src/proxy.ts, which does the authoritative check, so a second
@@ -16,6 +17,7 @@ export default function AppLayout({
       <main className="mx-auto w-full max-w-md flex-1 px-5 py-6">
         {children}
       </main>
+      <FreezeButton />
       <AppNav />
     </div>
   );

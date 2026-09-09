@@ -305,8 +305,25 @@ function CardBack({
       )}
       <p className="text-sm text-muted">{card.englishPrompt}</p>
 
+      {/* The family's version, where it differs. Authoritative when present —
+          but display-only: it never affects cloze slots or grading. */}
+      {card.familyVariant && (
+        <p className="mt-2 max-w-sm rounded-lg border border-accent/30 bg-accent/5 px-3 py-2 text-sm">
+          <span className="block text-xs font-medium uppercase tracking-wide text-accent">
+            How the family says it
+          </span>
+          <span className="mt-0.5 block">{card.familyVariant}</span>
+        </p>
+      )}
+
       {card.notes && (
         <p className="mt-2 max-w-sm text-sm text-foreground/80">{card.notes}</p>
+      )}
+
+      {!card.verified && (
+        <p className="text-xs text-muted" title="Gurmukhi not yet checked by a reader">
+          · spelling unverified
+        </p>
       )}
       {/* Cloze links the rule straight to its row in the frame reference —
           the only place the reference is wired into app behaviour. */}

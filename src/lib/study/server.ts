@@ -18,6 +18,8 @@ type SessionRow = {
   box: Box;
   audio_url: string | null;
   audio_speaker: string | null;
+  family_variant: string | null;
+  verified: boolean | null;
 };
 
 function toCard(r: SessionRow): TrainerCard {
@@ -34,6 +36,8 @@ function toCard(r: SessionRow): TrainerCard {
     audioUrl: r.audio_url,
     audioSpeaker: r.audio_speaker,
     box: r.box ?? 1,
+    familyVariant: r.family_variant,
+    verified: r.verified === true,
   };
 }
 

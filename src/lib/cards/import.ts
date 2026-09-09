@@ -11,6 +11,12 @@ export type ImportedCard = {
   slotIndexRoman: number | null;
   slotIndexGurmukhi: number | null;
   notes: string | null;
+  /** How the family actually says it — authoritative where present. */
+  familyVariant: string | null;
+  /** Gurmukhi orthography checked by a reader. */
+  verified: boolean;
+  /** The freeze this card came from, if any. Display-only. */
+  freezeId: string | null;
 };
 
 export type ParseResult = {
@@ -105,6 +111,9 @@ export function parseImport(raw: string): ParseResult {
       slotIndexRoman,
       slotIndexGurmukhi,
       notes: str(o.notes),
+      familyVariant: str(o.familyVariant),
+      verified: o.verified === true,
+      freezeId: str(o.freezeId),
     });
   });
 
