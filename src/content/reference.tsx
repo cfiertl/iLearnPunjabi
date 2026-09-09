@@ -86,42 +86,34 @@ const routine: ReferenceSection = {
         <table className={TABLE}>
           <thead>
             <tr>
-              <th className={TH}>When</th>
-              <th className={TH}>Minutes</th>
-              <th className={TH}>What</th>
+              <th className={TH}>Day</th>
+              <th className={TH}>Slot</th>
             </tr>
           </thead>
           <tbody>
             <tr>
-              <td className={TD}>Morning</td>
-              <td className={TD}>10</td>
-              <td className={TD}>Due reviews</td>
+              <td className={TD}>Daily</td>
+              <td className={TD}>10 min cards, morning</td>
             </tr>
             <tr>
-              <td className={TD}>Commute</td>
-              <td className={TD}>10–15</td>
-              <td className={TD}>
-                SBS clip — <B>same clip all week</B>
-              </td>
+              <td className={TD}>Weekdays</td>
+              <td className={TD}>SBS on the commute</td>
             </tr>
             <tr>
-              <td className={TD}>Throughout</td>
-              <td className={TD}>—</td>
-              <td className={TD}>Jasmine domains</td>
+              <td className={TD}>Wed</td>
+              <td className={TD}>1 hr 20 with Claude</td>
             </tr>
             <tr>
-              <td className={TD}>Evening</td>
-              <td className={TD}>5</td>
-              <td className={TD}>
-                Remaining reviews, log today&apos;s freezes
-              </td>
+              <td className={TD}>Thu or Fri</td>
+              <td className={TD}>4:00–4:20 Gurmukhi</td>
             </tr>
             <tr>
-              <td className={TD}>Mon/Wed/Fri</td>
-              <td className={TD}>20</td>
-              <td className={TD}>
-                Gurmukhi recognition (weeks 1–6 only)
-              </td>
+              <td className={TD}>Sat</td>
+              <td className={TD}>1–1.5 hr: Gurmukhi 20, then session</td>
+            </tr>
+            <tr>
+              <td className={TD}>Sun</td>
+              <td className={TD}>Solo: Gurmukhi, listening, export, checkpoint</td>
             </tr>
           </tbody>
         </table>
@@ -159,20 +151,20 @@ const sessions: ReferenceSection = {
           </thead>
           <tbody>
             <tr>
-              <td className={TD}>~10 min</td>
-              <td className={TD}>Export review — which frames are not landing</td>
+              <td className={TD}>0:00–0:10</td>
+              <td className={TD}>Export and freeze triage</td>
             </tr>
             <tr>
-              <td className={TD}>~20 min</td>
-              <td className={TD}>Teaching the next frame</td>
+              <td className={TD}>0:10–0:40</td>
+              <td className={TD}>New frame</td>
             </tr>
             <tr>
-              <td className={TD}>~15 min</td>
-              <td className={TD}>Freeze triage</td>
+              <td className={TD}>0:40–1:00</td>
+              <td className={TD}>Drilling</td>
             </tr>
             <tr>
-              <td className={TD}>~15 min</td>
-              <td className={TD}>Production under pressure</td>
+              <td className={TD}>1:00–1:20</td>
+              <td className={TD}>Roleplay and unseen production</td>
             </tr>
           </tbody>
         </table>

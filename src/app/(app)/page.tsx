@@ -57,6 +57,11 @@ export default async function HomePage() {
           }
         />
         <ActionCard
+          href="/log"
+          title="Routine log"
+          subtitle="Record the sessions the app can't see"
+        />
+        <ActionCard
           href="/cards"
           title="Cards"
           subtitle="Import a batch, or export everything as JSON"
