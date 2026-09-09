@@ -71,7 +71,12 @@ $$;
 -- Study session gains family_variant and verified. Body otherwise unchanged
 -- from 0006 -- both fields are display-only and touch nothing about the queue.
 -- ---------------------------------------------------------------------------
-create or replace function public.get_study_session(p_mode text default 'production')
+-- The RETURNS TABLE row type gains two columns, and CREATE OR REPLACE cannot
+-- change a function's OUT parameters. Drop first. Safe: it is a function, not
+-- data, and it is recreated immediately below.
+drop function if exists public.get_study_session(text);
+
+create function public.get_study_session(p_mode text default 'production')
 returns table (
   card_id             uuid,
   english_prompt      text,
