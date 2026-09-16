@@ -5,23 +5,33 @@ export const BUCKETS = [
   {
     bucket: "A",
     label: "A — missing a word",
+    meaning: "Missing a word",
     hint: "Structure was known, vocabulary wasn't",
   },
   {
     bucket: "B",
     label: "B — missing a frame",
+    meaning: "Missing a frame",
     hint: "Words known, no idea how to assemble them",
   },
   {
     bucket: "C",
     label: "C — knew it, froze",
+    meaning: "Knew it, froze anyway",
     hint: "Needs drilling, not teaching",
   },
 ] as const satisfies ReadonlyArray<{
   bucket: Bucket;
   label: string;
+  meaning: string;
   hint: string;
 }>;
+
+/** "B · Missing a frame" — the bucket with its meaning written out. */
+export function bucketLabel(bucket: Bucket): string {
+  const b = BUCKETS.find((x) => x.bucket === bucket)!;
+  return `${b.bucket} · ${b.meaning}`;
+}
 
 export function isBucket(value: unknown): value is Bucket {
   return value === "A" || value === "B" || value === "C";

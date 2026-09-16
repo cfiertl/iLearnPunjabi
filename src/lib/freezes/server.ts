@@ -38,12 +38,14 @@ export async function countUntriaged(): Promise<number> {
 
 export type FreezeLists = {
   untriaged: Freeze[];
-  triaged: Freeze[];
+  parked: Freeze[];
+  resolved: Freeze[];
 };
 
 /**
- * Untriaged oldest-first (the triage queue), and everything else newest-first.
- * Untriaged means no outcome yet: only a session import sets one.
+ * Untriaged oldest-first (worked front to back at the next session), then
+ * parked and resolved newest-first. Untriaged means no outcome yet — a bucket
+ * without an outcome is still untriaged, since only a session import decides.
  */
 export async function getFreezes(): Promise<FreezeLists> {
   const supabase = await createClient();
@@ -74,9 +76,11 @@ export async function getFreezes(): Promise<FreezeLists> {
     // Oldest first: the queue is worked front to back.
     .reverse();
 
-  const triaged = rows
-    .filter((r) => r.outcome !== null)
-    .map((r) => toFreeze(r, cardsByFreeze.get(r.id) ?? []));
+  const withCards = (r: Row) => toFreeze(r, cardsByFreeze.get(r.id) ?? []);
+  const parked = rows.filter((r) => r.outcome === "parked").map(withCards);
+  const resolved = rows
+    .filter((r) => r.outcome !== null && r.outcome !== "parked")
+    .map(withCards);
 
-  return { untriaged, triaged };
+  return { untriaged, parked, resolved };
 }

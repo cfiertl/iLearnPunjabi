@@ -7,7 +7,7 @@ import {
   previewSessionImport,
 } from "@/app/(app)/cards/session-actions";
 import type { FieldChange, SessionPreview } from "@/lib/imports/session";
-import { BUCKETS, OUTCOME_LABELS } from "@/lib/freezes/types";
+import { OUTCOME_LABELS, bucketLabel } from "@/lib/freezes/types";
 import { frameLabel } from "@/lib/frame-tags";
 
 /**
@@ -243,7 +243,7 @@ function Preview({ preview }: { preview: SessionPreview }) {
             <li key={f.id} className="flex flex-col gap-0.5">
               <span className="font-medium">{f.english}</span>
               <span className="text-xs">
-                {BUCKETS.find((b) => b.bucket === f.bucket)?.label}
+                {bucketLabel(f.bucket)}
               </span>
               <span className="text-xs">
                 {OUTCOME_LABELS[f.outcome]}

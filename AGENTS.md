@@ -76,11 +76,10 @@ atomically through the `apply_session_import` RPC (migration 0009). Rules:
 - `roman`/`gurmukhi`/`agreementSlot` are the form to PRODUCE (the family form).
   `familyVariant` = another accepted family form; `standardRoman` = textbook
   form the family doesn't use. Neither is graded.
-- Steps 1-3 are built (schema, import, export `punjabi-srs/3`). Steps 4 (card
-  back shows `familyVariant`/`standardRoman`) and 5 (freeze triage screen
-  becomes view-only, grouped untriaged/parked/resolved) wait on a real test
-  file. The legacy card-array import stays for bulk loads and no longer
-  touches freezes.
+- All five build steps are done (migrations 0009 and 0010); the first test
+  batch, `2026-09-16-test-1`, applied cleanly. The freeze screen is view-only:
+  untriaged, parked grouped by frame, resolved filterable. No triage buttons.
+  The legacy card-array import stays for bulk loads and never touches freezes.
 
 Legacy Phase-0/1 tables (`review_state`, `review_logs`, `daily_activity`,
 `usage_events`) still exist but are no longer read; superseded source files are

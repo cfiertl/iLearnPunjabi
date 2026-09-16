@@ -20,6 +20,8 @@ type SessionRow = {
   audio_speaker: string | null;
   family_variant: string | null;
   verified: boolean | null;
+  /** Absent until migration 0010 has run; treated as null. */
+  standard_roman?: string | null;
 };
 
 function toCard(r: SessionRow): TrainerCard {
@@ -37,6 +39,7 @@ function toCard(r: SessionRow): TrainerCard {
     audioSpeaker: r.audio_speaker,
     box: r.box ?? 1,
     familyVariant: r.family_variant,
+    standardRoman: r.standard_roman ?? null,
     verified: r.verified === true,
   };
 }

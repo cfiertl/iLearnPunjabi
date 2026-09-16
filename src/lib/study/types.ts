@@ -20,8 +20,13 @@ export type TrainerCard = {
   audioUrl: string | null;
   audioSpeaker: string | null;
   box: Box;
-  /** The family form. Authoritative where present; display-only. */
+  /**
+   * Another form the family also accepts, alongside `roman` — which is itself
+   * the family form wherever one is confirmed. Display-only.
+   */
   familyVariant: string | null;
+  /** The textbook form the family does not use. Display-only, never graded. */
+  standardRoman: string | null;
   verified: boolean;
 };
 

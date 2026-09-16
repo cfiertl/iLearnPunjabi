@@ -36,7 +36,7 @@ async function Body({ triageTab }: { triageTab: boolean }) {
     );
   }
 
-  const { untriaged, triaged } = await getFreezes();
+  const { untriaged, parked, resolved } = await getFreezes();
 
   return (
     <>
@@ -55,7 +55,7 @@ async function Body({ triageTab }: { triageTab: boolean }) {
       </nav>
 
       {triageTab ? (
-        <FreezeTriage untriaged={untriaged} triaged={triaged} />
+        <FreezeTriage untriaged={untriaged} parked={parked} resolved={resolved} />
       ) : (
         <FreezeCapture />
       )}

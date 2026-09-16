@@ -305,14 +305,21 @@ function CardBack({
       )}
       <p className="text-sm text-muted">{card.englishPrompt}</p>
 
-      {/* The family's version, where it differs. Authoritative when present —
-          but display-only: it never affects cloze slots or grading. */}
+      {/* The answer above is the form to produce: the family's, wherever they
+          have confirmed one. These are the alternatives, both display-only. A
+          family variant counts as correct too; the standard form is shown so
+          it is recognised, not so it is said. */}
       {card.familyVariant && (
         <p className="mt-2 max-w-sm rounded-lg border border-accent/30 bg-accent/5 px-3 py-2 text-sm">
           <span className="block text-xs font-medium uppercase tracking-wide text-accent">
-            How the family says it
+            Also said in the family
           </span>
           <span className="mt-0.5 block">{card.familyVariant}</span>
+        </p>
+      )}
+      {card.standardRoman && (
+        <p className="max-w-sm text-xs text-muted">
+          Standard Punjabi: {card.standardRoman}
         </p>
       )}
 
