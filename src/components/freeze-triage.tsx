@@ -3,7 +3,7 @@
 import { useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { BUCKETS, type Bucket, type Freeze } from "@/lib/freezes/types";
+import { BUCKETS, OUTCOME_LABELS, type Bucket, type Freeze } from "@/lib/freezes/types";
 import {
   discardFreeze,
   reopenFreeze,
@@ -21,7 +21,7 @@ export function FreezeTriage({
 
   const shown = triaged.filter((f) => {
     if (filter === "all") return true;
-    if (filter === "discarded") return f.bucket === null;
+    if (filter === "discarded") return f.outcome === "discarded";
     return f.bucket === filter;
   });
 
@@ -134,7 +134,7 @@ function DoneRow({ freeze }: { freeze: Freeze }) {
       <div className="min-w-0">
         <p className="truncate">{freeze.english}</p>
         <p className="text-xs text-muted">
-          {freeze.bucket ? `Bucket ${freeze.bucket}` : "Discarded"}
+          {[freeze.bucket && `Bucket ${freeze.bucket}`, freeze.outcome && OUTCOME_LABELS[freeze.outcome]].filter(Boolean).join(" · ")}
           {freeze.note ? ` · ${freeze.note}` : ""}
         </p>
         {/* The cards this freeze became. Display-only. */}

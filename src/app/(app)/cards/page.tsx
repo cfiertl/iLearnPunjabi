@@ -3,6 +3,7 @@ import { isSupabaseConfigured } from "@/lib/env";
 import { getDashboardStats } from "@/lib/study/server";
 import { listCards, type CardSummary } from "@/lib/cards/server";
 import { CardManager } from "@/components/card-manager";
+import { SessionImport } from "@/components/session-import";
 import { KNOWN_FRAME_TAGS, frameLabel } from "@/lib/frame-tags";
 
 /** ?tab=io shows import/export; the list is the default, being the daily use. */
@@ -19,7 +20,7 @@ export default async function CardsPage({
       <section>
         <h1 className="text-2xl font-bold tracking-tight">Cards</h1>
         <p className="mt-1 text-sm text-muted">
-          Edit what the family corrects, retire what stops earning its place.
+          Every change arrives in a session file, so this is a view, not an editor.
         </p>
       </section>
       <Body io={io} />
@@ -51,6 +52,7 @@ async function Body({ io }: { io: boolean }) {
 
       {io ? (
         <>
+          <SessionImport />
           <CardManager cardCount={stats.cardCount} />
           <FrameReference />
         </>

@@ -15,8 +15,6 @@ export type ImportedCard = {
   familyVariant: string | null;
   /** Gurmukhi orthography checked by a reader. */
   verified: boolean;
-  /** The freeze this card came from, if any. Display-only. */
-  freezeId: string | null;
 };
 
 export type ParseResult = {
@@ -113,7 +111,6 @@ export function parseImport(raw: string): ParseResult {
       notes: str(o.notes),
       familyVariant: str(o.familyVariant),
       verified: o.verified === true,
-      freezeId: str(o.freezeId),
     });
   });
 

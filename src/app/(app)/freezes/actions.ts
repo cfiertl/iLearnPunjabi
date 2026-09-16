@@ -56,7 +56,7 @@ export async function discardFreeze(id: string) {
   const supabase = await createClient();
   const { error } = await supabase
     .from("freezes")
-    .update({ resolved: true })
+    .update({ outcome: "discarded" })
     .eq("id", id);
   if (error) throw error;
 
@@ -69,7 +69,7 @@ export async function reopenFreeze(id: string) {
   const supabase = await createClient();
   const { error } = await supabase
     .from("freezes")
-    .update({ bucket: null, resolved: false })
+    .update({ bucket: null, outcome: null, waiting_on: null })
     .eq("id", id);
   if (error) throw error;
 

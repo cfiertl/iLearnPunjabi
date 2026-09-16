@@ -3,7 +3,8 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { importKey, parseImport } from "@/lib/cards/import";
-import { SEED_DECK_NAME, SEED_SENTENCES } from "@/content/seed-cards";
+import { SEED_SENTENCES } from "@/content/seed-cards";
+import { ensureDeck } from "@/lib/cards/deck";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 type FreezeRow = {
@@ -11,8 +12,12 @@ type FreezeRow = {
   english: string;
   captured_at: string;
   bucket: string | null;
+  outcome: string | null;
+  waiting_on: string | null;
   note: string | null;
   resolved: boolean;
+  triaged_at: string | null;
+  batch_id: string | null;
 };
 
 export type ImportPreview = {
@@ -23,31 +28,6 @@ export type ImportPreview = {
   unknownTags: string[];
   errors: string[];
 };
-
-/** The single deck every sentence card hangs off. Created on first use. */
-async function ensureDeck(supabase: SupabaseClient, userId: string) {
-  const { data: existing } = await supabase
-    .from("decks")
-    .select("id")
-    .eq("user_id", userId)
-    .eq("name", SEED_DECK_NAME)
-    .maybeSingle();
-  if (existing) return existing.id as string;
-
-  const { data, error } = await supabase
-    .from("decks")
-    .insert({
-      user_id: userId,
-      name: SEED_DECK_NAME,
-      level: "A2",
-      dialect_scope: "eastern",
-      description: "Sentence production cards, tagged by agreement frame.",
-    })
-    .select("id")
-    .single();
-  if (error || !data) throw error ?? new Error("Could not create deck");
-  return data.id as string;
-}
 
 /** Existing (prompt + sentence) keys, so imports stay idempotent. */
 async function existingKeys(supabase: SupabaseClient, userId: string) {
@@ -93,7 +73,12 @@ export async function previewImport(raw: string): Promise<ImportPreview> {
   };
 }
 
-/** Insert the new cards from a batch. Re-importing the same batch is a no-op. */
+/**
+ * Insert the new cards from a batch. Re-importing the same batch is a no-op.
+ *
+ * Bulk loading only. It never touches freezes: links and triage arrive in a
+ * session import, so there is exactly one path by which a freeze changes.
+ */
 export async function runImport(raw: string) {
   const { cards, errors } = parseImport(raw);
   if (cards.length === 0) {
@@ -131,7 +116,6 @@ export async function runImport(raw: string) {
       notes: c.notes,
       family_variant: c.familyVariant,
       verified: c.verified,
-      freeze_id: c.freezeId,
       active: true,
     });
   }
@@ -139,22 +123,6 @@ export async function runImport(raw: string) {
   if (rows.length > 0) {
     const { error } = await supabase.from("cards").insert(rows);
     if (error) throw error;
-
-    // A freeze that has produced cards is done. Without this it sits in the
-    // triage queue forever, and a queue that shows resolved work stops being a
-    // reliable picture of what is outstanding — which is how the whole freeze
-    // pipeline quietly dies.
-    const freezeIds = [
-      ...new Set(
-        rows.map((r) => r.freeze_id).filter((x): x is string => typeof x === "string"),
-      ),
-    ];
-    if (freezeIds.length > 0) {
-      await supabase
-        .from("freezes")
-        .update({ resolved: true })
-        .in("id", freezeIds);
-    }
   }
 
   revalidatePath("/cards");
@@ -187,11 +155,13 @@ export async function exportAll(): Promise<string> {
     { data: events },
     { data: clips },
     { data: freezes },
+    { data: links },
+    { data: imports },
   ] = await Promise.all([
       supabase
         .from("cards")
         .select(
-          "id, english, gurmukhi, roman, frame_tag, agreement_slot, slot_index_roman, slot_index_gurmukhi, notes, audio_id, active, created_at, family_variant, verified, freeze_id",
+          "id, english, gurmukhi, roman, frame_tag, agreement_slot, slot_index_roman, slot_index_gurmukhi, notes, audio_id, active, created_at, family_variant, standard_roman, verified, freeze_id, batch_id",
         )
         .not("frame_tag", "is", null)
         .order("created_at"),
@@ -203,22 +173,29 @@ export async function exportAll(): Promise<string> {
       // most useful ones in the file, so they are never filtered or summarised.
       supabase
         .from("freezes")
-        .select("id, english, captured_at, bucket, note, resolved")
+        .select(
+          "id, english, captured_at, bucket, outcome, waiting_on, note, resolved, triaged_at, batch_id",
+        )
         .order("captured_at"),
+      supabase.from("freeze_cards").select("freeze_id, card_id"),
+      // Every applied session batch, so the next session can confirm the last
+      // one landed before building on it.
+      supabase
+        .from("imports")
+        .select("batch_id, summary, created_at, applied_at, cards_added, cards_updated, freezes_updated")
+        .order("applied_at"),
     ]);
 
-  // cardIds is stored the other way round (cards.freeze_id), so derive it.
   const cardsByFreeze = new Map<string, string[]>();
-  for (const c of (cards ?? []) as { id: string; freeze_id: string | null }[]) {
-    if (!c.freeze_id) continue;
-    const list = cardsByFreeze.get(c.freeze_id) ?? [];
-    list.push(c.id);
-    cardsByFreeze.set(c.freeze_id, list);
+  for (const l of (links ?? []) as { freeze_id: string; card_id: string }[]) {
+    const list = cardsByFreeze.get(l.freeze_id) ?? [];
+    list.push(l.card_id);
+    cardsByFreeze.set(l.freeze_id, list);
   }
 
   const payload = {
     exportedAt: new Date().toISOString(),
-    schema: "punjabi-srs/2",
+    schema: "punjabi-srs/3",
     cards: (cards ?? []).map((c) => ({
       id: c.id,
       englishPrompt: c.english,
@@ -233,8 +210,11 @@ export async function exportAll(): Promise<string> {
       active: c.active,
       createdAt: c.created_at,
       familyVariant: c.family_variant,
+      standardRoman: c.standard_roman,
       verified: c.verified,
+      // Superseded by freezes[].cardIds; kept so older files still line up.
       freezeId: c.freeze_id,
+      batchId: c.batch_id,
     })),
     reviewState: state ?? [],
     reviewEvents: events ?? [],
@@ -244,86 +224,26 @@ export async function exportAll(): Promise<string> {
       english: f.english,
       capturedAt: f.captured_at,
       bucket: f.bucket,
+      outcome: f.outcome,
+      waitingOn: f.waiting_on,
       note: f.note,
       resolved: f.resolved,
       cardIds: cardsByFreeze.get(f.id) ?? [],
+      triagedAt: f.triaged_at,
+      batchId: f.batch_id,
+    })),
+    imports: (imports ?? []).map((i) => ({
+      batchId: i.batch_id,
+      summary: i.summary,
+      createdAt: i.created_at,
+      appliedAt: i.applied_at,
+      counts: {
+        cardsAdded: i.cards_added,
+        cardsUpdated: i.cards_updated,
+        freezesUpdated: i.freezes_updated,
+      },
     })),
   };
 
   return JSON.stringify(payload, null, 2);
-}
-
-// ---------------------------------------------------------------------------
-// Card management
-// ---------------------------------------------------------------------------
-
-export type CardEdit = {
-  englishPrompt: string;
-  roman: string;
-  gurmukhi: string;
-  frameTag: string;
-  agreementSlot: string | null;
-  slotIndexRoman: number | null;
-  slotIndexGurmukhi: number | null;
-  familyVariant: string | null;
-  notes: string | null;
-  verified: boolean;
-};
-
-/**
- * Edit a card in place.
- *
- * The point of this is corrections from the family: when Jasmine says her
- * family says it differently, the card changes. Anything else means a
- * re-import or SQL for every correction.
- *
- * Slot indices are stored rather than re-derived, because editing the wording
- * moves the agreement slot — the edit form resolves the index from the token
- * the user picks, so the two cannot drift apart.
- */
-export async function updateCard(id: string, patch: CardEdit) {
-  const english = patch.englishPrompt.trim();
-  const roman = patch.roman.trim();
-  if (!english || !roman) throw new Error("English and romanisation are required");
-
-  const supabase = await createClient();
-  const { error } = await supabase
-    .from("cards")
-    .update({
-      english,
-      roman,
-      gurmukhi: patch.gurmukhi.trim() || null,
-      frame_tag: patch.frameTag.trim() || null,
-      agreement_slot: patch.agreementSlot?.trim() || null,
-      slot_index_roman: patch.slotIndexRoman,
-      slot_index_gurmukhi: patch.slotIndexGurmukhi,
-      family_variant: patch.familyVariant?.trim() || null,
-      notes: patch.notes?.trim() || null,
-      verified: patch.verified,
-    })
-    .eq("id", id);
-  if (error) throw error;
-
-  revalidatePath("/cards");
-  revalidatePath(`/cards/${id}`);
-  revalidatePath("/study");
-  revalidatePath("/study/cloze");
-  return { ok: true };
-}
-
-/**
- * Retire or restore a card. Soft delete on purpose: a hard delete cascades to
- * review_events, and that log is never pruned. A retired card leaves every
- * review it produced intact in the record.
- */
-export async function setCardActive(id: string, active: boolean) {
-  const supabase = await createClient();
-  const { error } = await supabase.from("cards").update({ active }).eq("id", id);
-  if (error) throw error;
-
-  revalidatePath("/cards");
-  revalidatePath(`/cards/${id}`);
-  revalidatePath("/study");
-  revalidatePath("/");
-  return { ok: true };
 }

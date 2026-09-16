@@ -139,7 +139,8 @@ const sessions: ReferenceSection = {
     <div className="flex flex-col gap-4">
       <P>Wednesday plus one weekend day.</P>
       <P>
-        <B>Bring two things: the export, and the freeze list.</B>
+        <B>Bring the export.</B> It carries the freezes, untriaged and
+        parked, and the record of every session file applied so far.
       </P>
       <Scroll>
         <table className={TABLE}>
@@ -152,7 +153,7 @@ const sessions: ReferenceSection = {
           <tbody>
             <tr>
               <td className={TD}>0:00–0:10</td>
-              <td className={TD}>Export and freeze triage</td>
+              <td className={TD}>Check last session file landed, then freeze triage</td>
             </tr>
             <tr>
               <td className={TD}>0:10–0:40</td>
@@ -177,6 +178,12 @@ const sessions: ReferenceSection = {
       <P>
         <B>Bring freezes unsolved.</B> A freeze you have already looked up tells
         us nothing about what you would have done in the moment.
+      </P>
+      <P>
+        <B>Leave with a session file.</B> Claude writes one at the end: new
+        cards, card changes and triage decisions. Apply it on the Cards page
+        after reading the preview. Nothing is created, edited or resolved by
+        hand, so the next export shows exactly what was agreed.
       </P>
     </div>
   ),
@@ -230,26 +237,38 @@ const freezes: ReferenceSection = {
         one of them.
       </P>
       <P>
-        <B>Triage weekly into three buckets:</B>
+        <B>Triage happens in the session, not in the app.</B> Each freeze gets
+        a bucket (why it froze) and an outcome (what was done about it). The
+        decisions arrive in the session file.
+      </P>
+      <P>
+        <B>Buckets:</B>
       </P>
       <List>
         <li>
           <B>A — missing a word.</B> Structure was there, vocabulary was not.
-          Get it from Jasmine. Becomes a card only if it fits a taught frame.
+          Usual fix: a card.
         </li>
         <li>
           <B>B — missing a frame.</B> Words there, no idea how to assemble them.
-          Never a card. Goes to the session and sets curriculum order.
+          Teach the frame first, then card it. Until it is taught, the freeze
+          is parked against that frame and sets curriculum order.
         </li>
         <li>
           <B>C — had it, froze anyway.</B> Everything known, mouth would not
-          move. Straight into the deck plus spoken repetition.
+          move. Drill it — often an existing card already covers it.
         </li>
       </List>
       <P>
         <B>B means teach. C means drill.</B> Treating a B as a C produces
         frustration. Treating a C as a B produces a growing pile of knowledge
         you cannot deploy.
+      </P>
+      <P>
+        <B>Outcomes:</B> <em>carded</em> (new cards made),{" "}
+        <em>existing card</em> (already covered), <em>parked</em> (waiting on
+        a frame not yet taught — dealt with the session that frame is taught),
+        or <em>discarded</em>. Only parked stays open.
       </P>
       <P>
         <B>Generalise before carding.</B> One freeze becomes two or three cards,
@@ -435,6 +454,7 @@ const checkpoint: ReferenceSection = {
       <P>Five minutes at the end of the weekend session:</P>
       <List>
         <li>Export sent</li>
+        <li>Session file applied</li>
         <li>Agreement-fail rate — moving?</li>
         <li>Worst frame — untaught or undrilled?</li>
         <li>Cards at 4+ agreement fails pulled for re-teaching</li>

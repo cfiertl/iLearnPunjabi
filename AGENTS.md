@@ -60,6 +60,28 @@ linking a `frameTag` to `/reference/frames#<tag>`. Search builds its index by
 walking the rendered tree (`sectionText`), so table content must live in
 `children` rather than props to stay searchable.
 
+**Session import (addendum 3) is the single write path for triage.** Claude
+writes a `punjabi-import/1` file at the end of each session (new cards, card
+updates, freeze triage); Cards → Import / Export validates it
+(`src/lib/imports/session.ts`), previews every change, and applies it
+atomically through the `apply_session_import` RPC (migration 0009). Rules:
+- No hand-editing UI for cards or freezes. `/cards/[id]` is view-only (the
+  old editor is in `.archive/`). Don't add edit forms back.
+- A file with any error writes nothing. Applied `batchId`s are recorded in
+  `public.imports` (select + insert only) and can never be reused.
+- Freeze <-> card links live in `public.freeze_cards`. `cards.freeze_id` is
+  superseded — never read or write it.
+- `freezes.resolved` is a generated column derived from `outcome`; untriaged
+  means `outcome is null`.
+- `roman`/`gurmukhi`/`agreementSlot` are the form to PRODUCE (the family form).
+  `familyVariant` = another accepted family form; `standardRoman` = textbook
+  form the family doesn't use. Neither is graded.
+- Steps 1-3 are built (schema, import, export `punjabi-srs/3`). Steps 4 (card
+  back shows `familyVariant`/`standardRoman`) and 5 (freeze triage screen
+  becomes view-only, grouped untriaged/parked/resolved) wait on a real test
+  file. The legacy card-array import stays for bulk loads and no longer
+  touches freezes.
+
 Legacy Phase-0/1 tables (`review_state`, `review_logs`, `daily_activity`,
 `usage_events`) still exist but are no longer read; superseded source files are
 parked in `.archive/`.

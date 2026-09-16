@@ -1,12 +1,14 @@
 import "server-only";
 import { createClient } from "@/lib/supabase/server";
-import type { Bucket, Freeze } from "@/lib/freezes/types";
+import type { Bucket, Freeze, Outcome } from "@/lib/freezes/types";
 
 type Row = {
   id: string;
   english: string;
   captured_at: string;
   bucket: Bucket | null;
+  outcome: Outcome | null;
+  waiting_on: string | null;
   note: string | null;
   resolved: boolean;
 };
@@ -19,6 +21,8 @@ function toFreeze(row: Row, cards: CardLink[] = []): Freeze {
     english: row.english,
     capturedAt: row.captured_at,
     bucket: row.bucket,
+    outcome: row.outcome,
+    waitingOn: row.waiting_on,
     note: row.note,
     resolved: row.resolved,
     cards,
@@ -39,42 +43,39 @@ export type FreezeLists = {
 
 /**
  * Untriaged oldest-first (the triage queue), and everything else newest-first.
- * Both come back in one round trip.
+ * Untriaged means no outcome yet: only a session import sets one.
  */
 export async function getFreezes(): Promise<FreezeLists> {
   const supabase = await createClient();
 
-  const [allRes, cardRes] = await Promise.all([
+  const [allRes, linkRes] = await Promise.all([
     supabase
       .from("freezes")
-      .select("id, english, captured_at, bucket, note, resolved")
+      .select("id, english, captured_at, bucket, outcome, waiting_on, note, resolved")
       .order("captured_at", { ascending: false }),
-    supabase
-      .from("cards")
-      .select("id, english, freeze_id")
-      .not("freeze_id", "is", null),
+    supabase.from("freeze_cards").select("freeze_id, cards(id, english)"),
   ]);
 
   const cardsByFreeze = new Map<string, CardLink[]>();
-  for (const c of (cardRes.data ?? []) as {
-    id: string;
-    english: string;
+  for (const l of (linkRes.data ?? []) as unknown as {
     freeze_id: string;
+    cards: { id: string; english: string } | null;
   }[]) {
-    const list = cardsByFreeze.get(c.freeze_id) ?? [];
-    list.push({ id: c.id, englishPrompt: c.english });
-    cardsByFreeze.set(c.freeze_id, list);
+    if (!l.cards) continue;
+    const list = cardsByFreeze.get(l.freeze_id) ?? [];
+    list.push({ id: l.cards.id, englishPrompt: l.cards.english });
+    cardsByFreeze.set(l.freeze_id, list);
   }
 
   const rows = (allRes.data ?? []) as Row[];
   const untriaged = rows
-    .filter((r) => r.bucket === null && !r.resolved)
+    .filter((r) => r.outcome === null)
     .map((r) => toFreeze(r, cardsByFreeze.get(r.id) ?? []))
     // Oldest first: the queue is worked front to back.
     .reverse();
 
   const triaged = rows
-    .filter((r) => r.bucket !== null || r.resolved)
+    .filter((r) => r.outcome !== null)
     .map((r) => toFreeze(r, cardsByFreeze.get(r.id) ?? []));
 
   return { untriaged, triaged };

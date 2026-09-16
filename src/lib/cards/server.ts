@@ -19,11 +19,15 @@ export type CardDetail = CardSummary & {
   slotIndexRoman: number | null;
   slotIndexGurmukhi: number | null;
   notes: string | null;
-  freeze: { id: string; english: string } | null;
+  standardRoman: string | null;
+  /** The session import that created or last changed this card. */
+  batchId: string | null;
+  /** Freezes this card is linked to. Display-only. */
+  freezes: { id: string; english: string }[];
 };
 
 const COLUMNS =
-  "id, english, roman, gurmukhi, frame_tag, agreement_slot, slot_index_roman, slot_index_gurmukhi, notes, family_variant, verified, active, freeze_id";
+  "id, english, roman, gurmukhi, frame_tag, agreement_slot, slot_index_roman, slot_index_gurmukhi, notes, family_variant, standard_roman, batch_id, verified, active";
 
 type Row = {
   id: string;
@@ -36,9 +40,10 @@ type Row = {
   slot_index_gurmukhi: number | null;
   notes: string | null;
   family_variant: string | null;
+  standard_roman?: string | null;
+  batch_id?: string | null;
   verified: boolean | null;
   active: boolean | null;
-  freeze_id: string | null;
 };
 
 /** Every sentence card, retired ones included, newest last. */
@@ -94,13 +99,10 @@ export async function getCard(id: string): Promise<CardDetail | null> {
       .eq("card_id", id)
       .eq("mode", "production")
       .maybeSingle(),
-    r.freeze_id
-      ? supabase
-          .from("freezes")
-          .select("id, english")
-          .eq("id", r.freeze_id)
-          .maybeSingle()
-      : Promise.resolve({ data: null }),
+    supabase
+      .from("freeze_cards")
+      .select("freezes(id, english)")
+      .eq("card_id", id),
   ]);
 
   return {
@@ -114,9 +116,15 @@ export async function getCard(id: string): Promise<CardDetail | null> {
     slotIndexGurmukhi: r.slot_index_gurmukhi,
     notes: r.notes,
     familyVariant: r.family_variant,
+    standardRoman: r.standard_roman ?? null,
+    batchId: r.batch_id ?? null,
     verified: r.verified === true,
     active: r.active !== false,
     box: stateRes.data?.box ?? null,
-    freeze: (freezeRes.data as { id: string; english: string } | null) ?? null,
+    freezes: ((freezeRes.data ?? []) as unknown as {
+      freezes: { id: string; english: string } | null;
+    }[])
+      .map((l) => l.freezes)
+      .filter((f): f is { id: string; english: string } => f !== null),
   };
 }
