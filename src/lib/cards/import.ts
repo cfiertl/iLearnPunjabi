@@ -51,7 +51,20 @@ export function parseImport(raw: string): ParseResult {
   }
 
   if (!Array.isArray(parsed)) {
-    return { cards: [], errors: ["Expected a JSON array of cards."], unknownTags: [] };
+    // The two import boxes sit on the same page and look alike.
+    const isSessionFile =
+      typeof parsed === "object" &&
+      parsed !== null &&
+      (parsed as { schema?: unknown }).schema === "punjabi-import/1";
+    return {
+      cards: [],
+      errors: [
+        isSessionFile
+          ? "This is a session file. Use the Session file panel above (Check, then Apply)."
+          : "Expected a JSON array of cards.",
+      ],
+      unknownTags: [],
+    };
   }
 
   parsed.forEach((entry, i) => {
