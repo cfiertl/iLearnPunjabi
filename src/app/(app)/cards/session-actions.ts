@@ -9,6 +9,7 @@ import {
   type SessionPreview,
   type Snapshot,
 } from "@/lib/imports/session";
+import { ensureGurmukhiSeed, loadContent } from "@/lib/gurmukhi/server";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 type CardRow = {
@@ -28,7 +29,11 @@ type CardRow = {
 };
 
 /** The deck, freezes and applied batches the file is checked against. */
-async function loadSnapshot(supabase: SupabaseClient): Promise<Snapshot> {
+async function loadSnapshot(
+  supabase: SupabaseClient,
+  userId: string,
+  withGurmukhi: boolean,
+): Promise<Snapshot> {
   const [cardRes, freezeRes, importRes] = await Promise.all([
     supabase
       .from("cards")
@@ -39,6 +44,9 @@ async function loadSnapshot(supabase: SupabaseClient): Promise<Snapshot> {
     supabase.from("freezes").select("id, english"),
     supabase.from("imports").select("batch_id"),
   ]);
+  // Only a file with a gurmukhi section reads the drill tables, so a file
+  // without one works exactly as before — even before migration 0011.
+  const gurmukhi = withGurmukhi ? await loadGurmukhi(supabase, userId) : null;
   // A failed read must not look like an empty deck: every id would then be
   // reported missing, or worse, a reused batch id would pass.
   for (const r of [cardRes, freezeRes, importRes]) {
@@ -67,7 +75,18 @@ async function loadSnapshot(supabase: SupabaseClient): Promise<Snapshot> {
     appliedBatchIds: ((importRes.data ?? []) as { batch_id: string }[]).map(
       (i) => i.batch_id,
     ),
+    gurmukhi,
   };
+}
+
+/** Seeded first, so a label update can target a letter the drill never opened. */
+async function loadGurmukhi(supabase: SupabaseClient, userId: string) {
+  try {
+    await ensureGurmukhiSeed(supabase, userId);
+    return await loadContent(supabase);
+  } catch {
+    return null;
+  }
 }
 
 function failed(message: string): SessionPreview {
@@ -80,6 +99,7 @@ function failed(message: string): SessionPreview {
     cardsAdded: [],
     cardsUpdated: [],
     freezesUpdated: [],
+    gurmukhiChanges: [],
   };
 }
 
@@ -97,8 +117,10 @@ async function check(raw: string) {
   } = await supabase.auth.getUser();
   if (!user) return { preview: failed("Not signed in."), plan: null, supabase: null };
 
+  const withGurmukhi =
+    typeof file === "object" && file !== null && "gurmukhi" in file;
   const [snapshot, deckId] = await Promise.all([
-    loadSnapshot(supabase),
+    loadSnapshot(supabase, user.id, withGurmukhi),
     ensureDeck(supabase, user.id),
   ]);
   return { ...validateSession(file, snapshot, deckId), supabase };
@@ -132,6 +154,10 @@ export async function applySessionImport(
   revalidatePath("/freezes");
   revalidatePath("/study");
   revalidatePath("/study/cloze");
+  if (preview.gurmukhiChanges.length) {
+    revalidatePath("/study/gurmukhi");
+    revalidatePath("/stats");
+  }
   revalidatePath("/");
   return { ok: true, preview };
 }

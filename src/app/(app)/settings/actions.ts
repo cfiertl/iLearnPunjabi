@@ -33,7 +33,15 @@ export async function updateSettings(formData: FormData) {
     updated_at: new Date().toISOString(),
   });
 
+  // Separate write: the column only exists after migration 0011, and a failure
+  // here must not take the settings above down with it.
+  await supabase
+    .from("user_settings")
+    .update({ gurmukhi_palm_hint: formData.get("gurmukhi_palm_hint") !== null })
+    .eq("user_id", user.id);
+
   revalidatePath("/settings");
+  revalidatePath("/study/gurmukhi");
   revalidatePath("/study");
   revalidatePath("/study/cloze");
 }

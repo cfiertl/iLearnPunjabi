@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import { importKey, parseImport } from "@/lib/cards/import";
 import { SEED_SENTENCES } from "@/content/seed-cards";
 import { ensureDeck } from "@/lib/cards/deck";
+import { getGurmukhiExport } from "@/lib/gurmukhi/server";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 type FreezeRow = {
@@ -157,6 +158,7 @@ export async function exportAll(): Promise<string> {
     { data: freezes },
     { data: links },
     { data: imports },
+    gurmukhi,
   ] = await Promise.all([
       supabase
         .from("cards")
@@ -184,6 +186,8 @@ export async function exportAll(): Promise<string> {
         .from("imports")
         .select("batch_id, summary, created_at, applied_at, cards_added, cards_updated, freezes_updated")
         .order("applied_at"),
+      // The recognition drill: every attempt, and the current item state.
+      getGurmukhiExport(supabase),
     ]);
 
   const cardsByFreeze = new Map<string, string[]>();
@@ -232,6 +236,14 @@ export async function exportAll(): Promise<string> {
       triagedAt: f.triaged_at,
       batchId: f.batch_id,
     })),
+    // Absent tables (before migration 0011) export as empty, never as an error.
+    gurmukhiAttempts: gurmukhi?.attempts ?? [],
+    gurmukhiItems: {
+      letters: gurmukhi?.content.letters ?? [],
+      marks: gurmukhi?.content.marks ?? [],
+      confusableSets: gurmukhi?.content.sets ?? [],
+      words: gurmukhi?.content.words ?? [],
+    },
     imports: (imports ?? []).map((i) => ({
       batchId: i.batch_id,
       summary: i.summary,

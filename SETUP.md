@@ -37,6 +37,12 @@ idempotent, so re-running is safe.
    the append-only `review_events` log, audio clip metadata, and the queue and
    statistics functions.
 
+4. Every later migration in `supabase/migrations/`, in number order, through
+   [`0011_gurmukhi_drill.sql`](supabase/migrations/0011_gurmukhi_drill.sql) —
+   the Gurmukhi recognition drill's tables, the palm-check setting, and the
+   `gurmukhi` section of the session import. The drill seeds its letters,
+   marks and confusable sets itself the first time it opens.
+
 Migration 0003 is purely additive: the older FSRS tables (`review_state`,
 `review_logs`, `daily_activity`) are left untouched, and any word-level cards
 already in `cards` simply stop appearing because their `frame_tag` is null.

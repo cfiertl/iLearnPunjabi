@@ -78,6 +78,9 @@ export function SessionImport() {
           <p className="font-medium text-success">Applied {applied.batchId}</p>
           <p className="text-muted">{applied.summary}</p>
           <Counts preview={applied} />
+          {applied.gurmukhiChanges.length > 0 && (
+            <GurmukhiChanges changes={applied.gurmukhiChanges} />
+          )}
           <button
             onClick={() => setApplied(null)}
             className="self-start text-xs text-muted underline hover:text-brand-strong"
@@ -137,6 +140,7 @@ function failure(e: unknown): SessionPreview {
     cardsAdded: [],
     cardsUpdated: [],
     freezesUpdated: [],
+    gurmukhiChanges: [],
   };
 }
 
@@ -149,6 +153,13 @@ function Counts({ preview }: { preview: SessionPreview }) {
       update{preview.cardsUpdated.length === 1 ? "" : "s"} ·{" "}
       <strong className="text-foreground">{preview.freezesUpdated.length}</strong>{" "}
       freeze{preview.freezesUpdated.length === 1 ? "" : "s"}
+      {preview.gurmukhiChanges.length > 0 && (
+        <>
+          {" · "}
+          <strong className="text-foreground">{preview.gurmukhiChanges.length}</strong>{" "}
+          Gurmukhi change{preview.gurmukhiChanges.length === 1 ? "" : "s"}
+        </>
+      )}
     </p>
   );
 }
@@ -259,7 +270,23 @@ function Preview({ preview }: { preview: SessionPreview }) {
           ))}
         </Group>
       )}
+
+      {preview.gurmukhiChanges.length > 0 && (
+        <GurmukhiChanges changes={preview.gurmukhiChanges} />
+      )}
     </div>
+  );
+}
+
+function GurmukhiChanges({ changes }: { changes: string[] }) {
+  return (
+    <Group title="Gurmukhi drill">
+      {changes.map((c, i) => (
+        <li key={i} lang="pa" className="text-xs">
+          {c}
+        </li>
+      ))}
+    </Group>
   );
 }
 

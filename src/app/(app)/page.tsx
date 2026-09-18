@@ -57,6 +57,11 @@ export default async function HomePage() {
           }
         />
         <ActionCard
+          href="/study/gurmukhi"
+          title="Gurmukhi"
+          subtitle="Two-minute recognition drill — read aloud, then pick"
+        />
+        <ActionCard
           href="/log"
           title="Routine log"
           subtitle="Record the sessions the app can't see"

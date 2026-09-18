@@ -25,6 +25,8 @@ deploy.
   Sikh diaspora.
 - No accounts beyond the single owner, no sync, no sharing, no gamification,
   no streaks, no leaderboards, no multiple-choice, no typing-the-answer.
+  **One exception to multiple-choice:** the Gurmukhi recognition drill
+  (`/study/gurmukhi`), and only there. Sentence cards never get options.
 
 **Conventions:**
 - Supabase via `@supabase/ssr`: `src/lib/supabase/{client,server,middleware}.ts`.
@@ -84,3 +86,27 @@ atomically through the `apply_session_import` RPC (migration 0009). Rules:
 Legacy Phase-0/1 tables (`review_state`, `review_logs`, `daily_activity`,
 `usage_events`) still exist but are no longer read; superseded source files are
 parked in `.archive/`.
+
+**Gurmukhi recognition drill** (`docs/gurmukhi-drill.md`, migration 0011). A
+two-minute daily drill: a Gurmukhi item appears, it is read aloud, "Said it",
+then one of 4 readings is picked. Diagnostic first — which wrong reading gets
+picked and how long reading takes matter more than percent correct. Rules:
+- **Fully separate from the Leitner deck.** It never creates cards, moves
+  boxes, or feeds the agreement-fail rate or any frame statistic. Its stats are
+  a separate section at the bottom of `/stats`.
+- Logic is pure and client-side in `src/lib/gurmukhi/drill.ts` (items,
+  distractors, weighting — all tuning numbers are constants in `types.ts`).
+  It is **not a second SRS**: weighted random sampling per session.
+- Attempts are queued in localStorage and uploaded by the browser
+  (`src/lib/gurmukhi/local.ts`), so a whole session works offline.
+  `public.gurmukhi_attempts` is append-only (select + insert only), with
+  browser-generated ids so re-uploads land once.
+- History is keyed on `item_id` / `shown`, never the label, so relabelling
+  keeps history. Syllables are generated (consonant codepoint THEN mark — never
+  put ਿ first in the string); words are authored with explicit options and are
+  never transliterated or generated.
+- Content is seeded per user on first use (`src/content/gurmukhi-seed.ts`);
+  afterwards it changes **only** through the optional `gurmukhi` section of the
+  session import (camelCase keys, validated in `src/lib/imports/gurmukhi.ts`).
+  A file without that section behaves exactly as before.
+- No audio or TTS in the drill.

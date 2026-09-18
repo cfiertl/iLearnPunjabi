@@ -1,6 +1,7 @@
 import { isSupabaseConfigured } from "@/lib/env";
 import { getUser } from "@/lib/auth";
 import { getSessionPrefs } from "@/lib/study/server";
+import { getPalmHint } from "@/lib/gurmukhi/server";
 import { signOut } from "@/app/actions/auth";
 import { updateSettings } from "./actions";
 
@@ -15,8 +16,11 @@ export default async function SettingsPage() {
     );
   }
 
-  const user = await getUser();
-  const prefs = await getSessionPrefs();
+  const [user, prefs, palmHint] = await Promise.all([
+    getUser(),
+    getSessionPrefs(),
+    getPalmHint(),
+  ]);
 
   return (
     <Wrap>
@@ -99,6 +103,22 @@ export default async function SettingsPage() {
             <span className="block text-xs text-muted">
               Holds the Flip button for a moment so checking the answer cannot
               replace attempting the sentence. On by default.
+            </span>
+          </span>
+        </label>
+
+        <label className="flex items-start gap-3">
+          <input
+            name="gurmukhi_palm_hint"
+            type="checkbox"
+            defaultChecked={palmHint}
+            className="mt-1 h-4 w-4 accent-[var(--brand)]"
+          />
+          <span>
+            <span className="text-sm font-medium">Gurmukhi drill: palm check hint</span>
+            <span className="block text-xs text-muted">
+              Shows &ldquo;Palm check&rdquo; while you read an item starting with an
+              aspirated letter (ਖ ਛ ਠ ਥ ਫ). On by default.
             </span>
           </span>
         </label>

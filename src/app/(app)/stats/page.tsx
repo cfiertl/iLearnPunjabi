@@ -2,6 +2,7 @@ import { isSupabaseConfigured } from "@/lib/env";
 import { getStats, type FrameRow, type StatsData } from "@/lib/stats/server";
 import { frameLabel, frameRule } from "@/lib/frame-tags";
 import { AgreementChart } from "@/components/agreement-chart";
+import { GurmukhiStatsSection } from "@/components/gurmukhi-stats";
 
 export default async function StatsPage() {
   return (
@@ -13,6 +14,7 @@ export default async function StatsPage() {
         </p>
       </section>
       <Body />
+      {isSupabaseConfigured && <GurmukhiStatsSection />}
     </div>
   );
 }
