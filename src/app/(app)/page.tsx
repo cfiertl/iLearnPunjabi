@@ -7,6 +7,12 @@ export default async function HomePage() {
   // no longer waits on a preferences query before it can ask for numbers.
   const stats = isSupabaseConfigured ? await getDashboardStats() : null;
 
+  // The whole of today's production set, finished and unfinished together.
+  // The review cap is a daily budget, so what is left is only half the story:
+  // without the total, a set part-finished this morning looks like a fresh one.
+  const doneToday = stats?.reviewedToday ?? 0;
+  const setToday = doneToday + (stats?.dueProduction ?? 0);
+
   return (
     <div className="flex flex-col gap-6">
       <section>
@@ -20,14 +26,18 @@ export default async function HomePage() {
 
       <section className="grid grid-cols-2 gap-3">
         <StatCard
-          label="Due now"
+          label="Left today"
           value={String(stats?.dueProduction ?? 0)}
           hint={
             !stats?.cardCount
               ? "No sentences yet"
-              : stats.dueProduction
-                ? "Ready when you are"
-                : "Nothing waiting"
+              : !stats.dueProduction
+                ? doneToday
+                  ? `Today's set is done — ${doneToday} reviewed`
+                  : "Nothing waiting"
+                : doneToday
+                  ? `${doneToday} of ${setToday} done`
+                  : "Ready when you are"
           }
         />
         <StatCard
@@ -43,7 +53,7 @@ export default async function HomePage() {
           title="Production"
           subtitle={
             stats?.dueProduction
-              ? `${stats.dueProduction} due — English prompt in, full sentence out`
+              ? `${stats.dueProduction} left today — English prompt in, full sentence out`
               : "English prompt in, full sentence out"
           }
         />
@@ -52,7 +62,7 @@ export default async function HomePage() {
           title="Cloze"
           subtitle={
             stats?.dueCloze
-              ? `${stats.dueCloze} due — fill the missing agreement`
+              ? `${stats.dueCloze} left today — fill the missing agreement`
               : "Fill the missing agreement"
           }
         />

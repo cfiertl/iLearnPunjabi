@@ -65,11 +65,21 @@ export async function getSessionPrefs(): Promise<SessionPrefs> {
  * A whole study session in one round trip — queue, boxes and audio together.
  * The RPC applies session_cap and new_per_day server-side, so this no longer
  * has to wait on a preferences query before it can ask for cards.
+ *
+ * `session_cap` is a budget for the DAY, not for each visit: the RPC subtracts
+ * what has already been reviewed since the learner's midnight. Stopping twelve
+ * cards in and coming back gives the remaining eighteen, not a fresh thirty.
+ * `ignoreDailyCap` is the deliberate opt-out — a second helping once the day's
+ * set is finished.
  */
-export async function getStudySession(mode: ReviewMode): Promise<TrainerCard[]> {
+export async function getStudySession(
+  mode: ReviewMode,
+  { ignoreDailyCap = false }: { ignoreDailyCap?: boolean } = {},
+): Promise<TrainerCard[]> {
   const supabase = await createClient();
   const { data, error } = await supabase.rpc("get_study_session", {
     p_mode: mode,
+    p_ignore_daily_cap: ignoreDailyCap,
   });
   if (error || !data) return [];
 
@@ -80,26 +90,60 @@ export async function getStudySession(mode: ReviewMode): Promise<TrainerCard[]> 
   return (data as SessionRow[]).map(toCard);
 }
 
+/** Cards reviewed in this mode since the learner's midnight. */
+export async function countReviewedToday(mode: ReviewMode): Promise<number> {
+  const supabase = await createClient();
+  const { data } = await supabase.rpc("my_reviews_today", { p_mode: mode });
+  return typeof data === "number" ? data : 0;
+}
+
+/**
+ * Everything that is due, ignoring today's budget.
+ *
+ * Only used to tell "the day's set is done, but there is more waiting if you
+ * want it" apart from "genuinely nothing is due" — two states that otherwise
+ * both show up as an empty queue.
+ */
+export async function countDueIgnoringDailyCap(
+  mode: ReviewMode,
+): Promise<number> {
+  const supabase = await createClient();
+  const { data } = await supabase.rpc("count_due_reviews", {
+    p_mode: mode,
+    p_ignore_daily_cap: true,
+  });
+  return typeof data === "number" ? data : 0;
+}
+
 /**
  * Home screen counts. Every query here is independent, so they run
- * concurrently — the whole screen costs one round trip, not three.
+ * concurrently — the whole screen costs one round trip, not five.
+ *
+ * `dueProduction` / `dueCloze` are now what the study page will actually hand
+ * over: due cards capped by what is left of today's budget. Before the cap was
+ * shared, the home screen advertised a backlog the session never served.
  */
 export async function getDashboardStats() {
   const supabase = await createClient();
 
-  const [production, cloze, { count: sentenceCards }] = await Promise.all([
-    supabase.rpc("count_due_reviews", { p_mode: "production" }),
-    supabase.rpc("count_due_reviews", { p_mode: "cloze" }),
-    supabase
-      .from("cards")
-      .select("id", { count: "exact", head: true })
-      .not("frame_tag", "is", null)
-      .eq("active", true),
-  ]);
+  const [production, cloze, { count: sentenceCards }, prefs, reviewedToday] =
+    await Promise.all([
+      supabase.rpc("count_due_reviews", { p_mode: "production" }),
+      supabase.rpc("count_due_reviews", { p_mode: "cloze" }),
+      supabase
+        .from("cards")
+        .select("id", { count: "exact", head: true })
+        .not("frame_tag", "is", null)
+        .eq("active", true),
+      getSessionPrefs(),
+      countReviewedToday("production"),
+    ]);
 
   return {
     dueProduction: typeof production.data === "number" ? production.data : 0,
     dueCloze: typeof cloze.data === "number" ? cloze.data : 0,
     cardCount: sentenceCards ?? 0,
+    reviewedToday,
+    dailyCap: prefs.sessionCap,
   };
 }

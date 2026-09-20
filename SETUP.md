@@ -38,10 +38,11 @@ idempotent, so re-running is safe.
    statistics functions.
 
 4. Every later migration in `supabase/migrations/`, in number order, through
-   [`0011_gurmukhi_drill.sql`](supabase/migrations/0011_gurmukhi_drill.sql) —
-   the Gurmukhi recognition drill's tables, the palm-check setting, and the
-   `gurmukhi` section of the session import. The drill seeds its letters,
-   marks and confusable sets itself the first time it opens.
+   [`0012_daily_review_budget.sql`](supabase/migrations/0012_daily_review_budget.sql)
+   — the Gurmukhi recognition drill's tables, the palm-check setting, the
+   `gurmukhi` section of the session import, and the review cap becoming a
+   budget for the day rather than for each visit to the study page. The drill
+   seeds its letters, marks and confusable sets itself the first time it opens.
 
 Migration 0003 is purely additive: the older FSRS tables (`review_state`,
 `review_logs`, `daily_activity`) are left untouched, and any word-level cards

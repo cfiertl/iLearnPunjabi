@@ -1,9 +1,23 @@
 import Link from "next/link";
 import { isSupabaseConfigured } from "@/lib/env";
-import { getSessionPrefs, getStudySession } from "@/lib/study/server";
+import {
+  countDueIgnoringDailyCap,
+  countReviewedToday,
+  getSessionPrefs,
+  getStudySession,
+} from "@/lib/study/server";
 import { ReviewSession } from "@/components/review-session";
+import { DayComplete } from "@/components/day-complete";
 
-export default async function StudyPage() {
+export default async function StudyPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ all?: string }>;
+}) {
+  // `?all=1` is the opt-out from the daily cap — a second session once today's
+  // set is finished. Reading it makes this page dynamic, which it already was.
+  const extra = (await searchParams).all === "1";
+
   return (
     <div className="flex flex-col gap-6">
       <section>
@@ -12,12 +26,12 @@ export default async function StudyPage() {
           Read the English, say the whole sentence aloud, then flip.
         </p>
       </section>
-      <StudyBody />
+      <StudyBody extra={extra} />
     </div>
   );
 }
 
-async function StudyBody() {
+async function StudyBody({ extra }: { extra: boolean }) {
   if (!isSupabaseConfigured) {
     return (
       <Placeholder title="Connect Supabase first">
@@ -27,12 +41,28 @@ async function StudyBody() {
   }
 
   // Independent queries — fire them together rather than chaining awaits.
-  const [prefs, queue] = await Promise.all([
+  const [prefs, queue, doneToday] = await Promise.all([
     getSessionPrefs(),
-    getStudySession("production"),
+    getStudySession("production", { ignoreDailyCap: extra }),
+    countReviewedToday("production"),
   ]);
 
   if (queue.length === 0) {
+    // An empty queue means one of two quite different things: the day's budget
+    // is spent, or nothing is actually waiting. Only the second is "come back
+    // tomorrow", so find out which before saying anything.
+    const waiting = await countDueIgnoringDailyCap("production");
+
+    if (!extra && doneToday > 0 && waiting > 0) {
+      return (
+        <DayComplete
+          mode="production"
+          doneToday={doneToday}
+          stillWaiting={waiting}
+        />
+      );
+    }
+
     return (
       <Placeholder title="Nothing due">
         No sentences are waiting right now.{" "}
@@ -50,6 +80,8 @@ async function StudyBody() {
       mode="production"
       flipDelayMs={prefs.flipDelayMs}
       scriptMode={prefs.scriptMode}
+      doneToday={extra ? 0 : doneToday}
+      extra={extra}
     />
   );
 }

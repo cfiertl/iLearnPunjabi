@@ -1,10 +1,22 @@
 import Link from "next/link";
 import { isSupabaseConfigured } from "@/lib/env";
-import { getSessionPrefs, getStudySession } from "@/lib/study/server";
+import {
+  countDueIgnoringDailyCap,
+  countReviewedToday,
+  getSessionPrefs,
+  getStudySession,
+} from "@/lib/study/server";
 import { isClozeable } from "@/lib/study/types";
 import { ReviewSession } from "@/components/review-session";
+import { DayComplete } from "@/components/day-complete";
 
-export default async function ClozePage() {
+export default async function ClozePage({
+  searchParams,
+}: {
+  searchParams: Promise<{ all?: string }>;
+}) {
+  const extra = (await searchParams).all === "1";
+
   return (
     <div className="flex flex-col gap-6">
       <section>
@@ -13,12 +25,12 @@ export default async function ClozePage() {
           The agreement slot is blanked out.
         </p>
       </section>
-      <ClozeBody />
+      <ClozeBody extra={extra} />
     </div>
   );
 }
 
-async function ClozeBody() {
+async function ClozeBody({ extra }: { extra: boolean }) {
   if (!isSupabaseConfigured) {
     return (
       <Placeholder title="Connect Supabase first">
@@ -27,9 +39,10 @@ async function ClozeBody() {
     );
   }
 
-  const [prefs, all] = await Promise.all([
+  const [prefs, all, doneToday] = await Promise.all([
     getSessionPrefs(),
-    getStudySession("cloze"),
+    getStudySession("cloze", { ignoreDailyCap: extra }),
+    countReviewedToday("cloze"),
   ]);
 
   // Drop cards whose slot cannot be located in the script being blanked —
@@ -37,6 +50,15 @@ async function ClozeBody() {
   const queue = all.filter((c) => isClozeable(c, prefs.scriptMode));
 
   if (queue.length === 0) {
+    // Today's budget spent is a different state from nothing waiting.
+    const waiting = await countDueIgnoringDailyCap("cloze");
+
+    if (!extra && doneToday > 0 && waiting > 0) {
+      return (
+        <DayComplete mode="cloze" doneToday={doneToday} stillWaiting={waiting} />
+      );
+    }
+
     return (
       <Placeholder title="Nothing due">
         Cloze only covers cards with an agreement slot under test. Add{" "}
@@ -56,6 +78,8 @@ async function ClozeBody() {
       mode="cloze"
       flipDelayMs={prefs.flipDelayMs}
       scriptMode={prefs.scriptMode}
+      doneToday={extra ? 0 : doneToday}
+      extra={extra}
     />
   );
 }

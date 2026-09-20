@@ -14,6 +14,15 @@ type Props = {
   mode: ReviewMode;
   flipDelayMs: number;
   scriptMode: ScriptMode;
+  /**
+   * Cards already reviewed in this mode today, from earlier sittings. The
+   * counter runs across the whole day's set rather than restarting at 1 each
+   * time the page is opened — stopping and coming back is meant to continue a
+   * day, not begin one.
+   */
+  doneToday: number;
+  /** An extra session past the daily cap, so there is no day total to count against. */
+  extra: boolean;
 };
 
 export function ReviewSession({
@@ -21,6 +30,8 @@ export function ReviewSession({
   mode,
   flipDelayMs,
   scriptMode,
+  doneToday,
+  extra,
 }: Props) {
   const router = useRouter();
 
@@ -34,9 +45,10 @@ export function ReviewSession({
   const [busy, setBusy] = useState(false);
   const [tally, setTally] = useState({ correct: 0, agreement: 0, fail: 0 });
   const [saveError, setSaveError] = useState<string | null>(null);
+  const [stopped, setStopped] = useState(false);
 
   const card = queue[index];
-  const done = !card;
+  const done = stopped || !card;
 
   const rate = useCallback(
     async (grade: Grade) => {
@@ -98,10 +110,21 @@ export function ReviewSession({
 
   if (done) {
     const total = tally.correct + tally.agreement + tally.fail;
+    const left = queue.length - index;
     return (
       <div className="flex flex-col items-center gap-4 rounded-2xl border border-border bg-surface p-8 text-center">
-        <p className="text-lg font-bold">Session complete</p>
+        <p className="text-lg font-bold">
+          {stopped ? "Stopped there" : "Session complete"}
+        </p>
         <p className="text-sm text-muted">{total} reviewed</p>
+        {/* Every grade is already saved, so the rest of the day's set is
+            genuinely waiting — say so, rather than leaving the impression that
+            leaving early threw the sitting away. */}
+        {stopped && left > 0 && (
+          <p className="max-w-xs text-sm text-muted">
+            {left} still to go — they&rsquo;ll be here when you come back.
+          </p>
+        )}
         <dl className="grid w-full grid-cols-3 gap-2 text-center">
           <Tally label="Got it" value={tally.correct} />
           <Tally label="Agreement" value={tally.agreement} />
@@ -117,14 +140,19 @@ export function ReviewSession({
     );
   }
 
-  const progress = Math.round((index / queue.length) * 100);
+  // Progress is measured against the day's set, not this sitting's slice of
+  // it, so a second visit picks up where the first stopped.
+  const position = doneToday + index;
+  const dayTotal = doneToday + queue.length;
+  const progress = Math.round((position / dayTotal) * 100);
 
   return (
     <div className="flex flex-col gap-5">
       <div>
         <div className="mb-1.5 flex justify-between text-xs text-muted">
           <span>
-            {index + 1} / {queue.length}
+            {position + 1} / {dayTotal}
+            {extra && " · extra"}
           </span>
           <span>Box {card.box}</span>
         </div>
@@ -169,6 +197,17 @@ export function ReviewSession({
           ))}
         </div>
       )}
+
+      {/* Leaving mid-set is a normal way to use this, not a failure: nothing is
+          lost, and the remaining cards stay in today's set. Making that exit
+          explicit beats navigating away and wondering what was kept. */}
+      <button
+        onClick={() => setStopped(true)}
+        disabled={busy}
+        className="self-center text-xs text-muted underline underline-offset-2 hover:text-brand-strong disabled:opacity-50"
+      >
+        End session here
+      </button>
     </div>
   );
 }

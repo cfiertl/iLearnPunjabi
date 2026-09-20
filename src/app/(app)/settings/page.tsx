@@ -68,7 +68,12 @@ export default async function SettingsPage() {
         </fieldset>
 
         <label className="flex flex-col gap-1.5">
-          <span className="text-sm font-medium">Reviews per session</span>
+          <span className="text-sm font-medium">Reviews per day</span>
+          <span className="text-xs text-muted">
+            The size of the day&rsquo;s set, across however many sittings it
+            takes. Stopping half way and coming back later continues it rather
+            than starting a new one.
+          </span>
           <input
             name="session_cap"
             type="number"

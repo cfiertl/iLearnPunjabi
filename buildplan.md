@@ -103,7 +103,9 @@ Grade transitions:
 
 `agreement` and `fail` are scheduled identically on purpose. They differ only in what they record. Do not let anyone "simplify" them into one grade.
 
-Due queue: all states where `dueAt <= now`, ordered by `dueAt` ascending, then by `box` ascending so struggling cards surface first. Cap a session at 30 reviews by default, user-adjustable.
+Due queue: all states where `dueAt <= now`, ordered by `dueAt` ascending, then by `box` ascending so struggling cards surface first. Cap reviews at 30 by default, user-adjustable.
+
+That cap is a budget for the **day**, not for each visit to the study page. It counts what has already been reviewed since the learner's midnight and hands over only the remainder, so a set can be started in the morning, abandoned half way, and finished in the evening — stopping early must never reset the day to its full baseline. Once the budget is spent the study page says so rather than pretending nothing is due, and offers an explicit way past it for a second session.
 
 New cards enter at box 1 due immediately, throttled to 10 new per day.
 

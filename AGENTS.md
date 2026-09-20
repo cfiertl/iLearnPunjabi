@@ -37,6 +37,10 @@ deploy.
   when a `src/` dir is used, or Next silently ignores it.
 - Scheduling is **Leitner**, five boxes, 1/2/4/8/16 days (`src/lib/leitner.ts`).
   Deliberately not FSRS/SM-2 — do not "upgrade" it.
+- `session_cap` is a budget for the **day**, not for each visit to /study:
+  `get_study_session` subtracts what has been reviewed since the learner's
+  midnight (migration 0012). Stopping half way and returning must continue the
+  day's set, never re-serve a full cap. `?all=1` is the deliberate way past it.
 - `public.review_events` is **append-only**: never mutated, never pruned. It is
   the diagnostic record the whole app exists to produce. RLS grants select and
   insert only.
