@@ -37,10 +37,21 @@ deploy.
   when a `src/` dir is used, or Next silently ignores it.
 - Scheduling is **Leitner**, five boxes, 1/2/4/8/16 days (`src/lib/leitner.ts`).
   Deliberately not FSRS/SM-2 — do not "upgrade" it.
-- `session_cap` is a budget for the **day**, not for each visit to /study:
-  `get_study_session` subtracts what has been reviewed since the learner's
-  midnight (migration 0012). Stopping half way and returning must continue the
+- `session_cap` is **one budget for the day, shared by production and cloze**
+  (migrations 0012, 0013). `get_study_session` subtracts what has been reviewed
+  since the learner's midnight, counting **both modes** — a per-mode remainder
+  turned a cap of 30 into 60. Stopping half way and returning must continue the
   day's set, never re-serve a full cap. `?all=1` is the deliberate way past it.
+  Anything that counts against the cap uses `my_reviews_today_all()`; the
+  per-mode `my_reviews_today(mode)` must not be used for budgeting.
+- `new_per_day` is a **reservation off the top of that budget**, per mode, not
+  the leftover after reviews. New cards carry `due_at = now()`, which sorts
+  after every overdue card, so a trailing `limit` cut them first and the deck
+  silently stopped growing. `my_day_split` is the single place the budget is
+  divided, and both `count_due_reviews` and `get_study_session` read it, so the
+  home screen can never advertise a number the session won't serve. Keep
+  `new_per_day` small: box 5 recurs every 16 days forever, so each new card
+  adds ~1/16 of a review to every future day.
 - `public.review_events` is **append-only**: never mutated, never pruned. It is
   the diagnostic record the whole app exists to produce. RLS grants select and
   insert only.

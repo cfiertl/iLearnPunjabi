@@ -52,8 +52,8 @@ export async function getSessionPrefs(): Promise<SessionPrefs> {
     .maybeSingle();
 
   return {
-    sessionCap: data?.session_cap ?? 30,
-    newPerDay: data?.new_per_day ?? 10,
+    sessionCap: data?.session_cap ?? 15,
+    newPerDay: data?.new_per_day ?? 3,
     flipDelayMs: data?.flip_delay_ms ?? 1500,
     scriptMode: isScriptMode(data?.script_mode)
       ? data.script_mode
@@ -90,10 +90,18 @@ export async function getStudySession(
   return (data as SessionRow[]).map(toCard);
 }
 
-/** Cards reviewed in this mode since the learner's midnight. */
-export async function countReviewedToday(mode: ReviewMode): Promise<number> {
+/**
+ * Reviews done since the learner's midnight, across BOTH modes.
+ *
+ * The daily cap is one budget covering production and cloze together
+ * (migration 0013) — before that each mode subtracted only its own reviews, so
+ * a cap of 30 quietly delivered sixty sentences. A day's work is a day's work
+ * whichever mode it went into, so the number the screens count against has to
+ * be the shared one.
+ */
+export async function countReviewedToday(): Promise<number> {
   const supabase = await createClient();
-  const { data } = await supabase.rpc("my_reviews_today", { p_mode: mode });
+  const { data } = await supabase.rpc("my_reviews_today_all");
   return typeof data === "number" ? data : 0;
 }
 
@@ -119,9 +127,14 @@ export async function countDueIgnoringDailyCap(
  * Home screen counts. Every query here is independent, so they run
  * concurrently — the whole screen costs one round trip, not five.
  *
- * `dueProduction` / `dueCloze` are now what the study page will actually hand
- * over: due cards capped by what is left of today's budget. Before the cap was
+ * `dueProduction` / `dueCloze` are what each study page will actually hand
+ * over: cards capped by what is left of today's budget. Before the cap was
  * shared, the home screen advertised a backlog the session never served.
+ *
+ * They do NOT add up to the day, though — the budget is one pot the two modes
+ * draw from, so each is capped by the same remainder and quoting their sum
+ * would double-count it. `remainingToday` is the honest total, and the home
+ * screen leads with that.
  */
 export async function getDashboardStats() {
   const supabase = await createClient();
@@ -136,14 +149,24 @@ export async function getDashboardStats() {
         .not("frame_tag", "is", null)
         .eq("active", true),
       getSessionPrefs(),
-      countReviewedToday("production"),
+      countReviewedToday(),
     ]);
 
+  const dueProduction =
+    typeof production.data === "number" ? production.data : 0;
+  const dueCloze = typeof cloze.data === "number" ? cloze.data : 0;
+
   return {
-    dueProduction: typeof production.data === "number" ? production.data : 0,
-    dueCloze: typeof cloze.data === "number" ? cloze.data : 0,
+    dueProduction,
+    dueCloze,
     cardCount: sentenceCards ?? 0,
     reviewedToday,
     dailyCap: prefs.sessionCap,
+    // What is left of the shared budget, bounded by what there is to do: an
+    // untouched budget with an empty deck is not "15 left today".
+    remainingToday: Math.min(
+      Math.max(prefs.sessionCap - reviewedToday, 0),
+      dueProduction + dueCloze,
+    ),
   };
 }

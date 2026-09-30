@@ -44,7 +44,7 @@ async function StudyBody({ extra }: { extra: boolean }) {
   const [prefs, queue, doneToday] = await Promise.all([
     getSessionPrefs(),
     getStudySession("production", { ignoreDailyCap: extra }),
-    countReviewedToday("production"),
+    countReviewedToday(),
   ]);
 
   if (queue.length === 0) {

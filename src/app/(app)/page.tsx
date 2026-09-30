@@ -7,11 +7,13 @@ export default async function HomePage() {
   // no longer waits on a preferences query before it can ask for numbers.
   const stats = isSupabaseConfigured ? await getDashboardStats() : null;
 
-  // The whole of today's production set, finished and unfinished together.
-  // The review cap is a daily budget, so what is left is only half the story:
-  // without the total, a set part-finished this morning looks like a fresh one.
+  // The whole of today's set, finished and unfinished together, across both
+  // modes — the cap is one budget they share. What is left is only half the
+  // story: without the total, a set part-finished this morning looks like a
+  // fresh one.
   const doneToday = stats?.reviewedToday ?? 0;
-  const setToday = doneToday + (stats?.dueProduction ?? 0);
+  const leftToday = stats?.remainingToday ?? 0;
+  const setToday = doneToday + leftToday;
 
   return (
     <div className="flex flex-col gap-6">
@@ -27,11 +29,11 @@ export default async function HomePage() {
       <section className="grid grid-cols-2 gap-3">
         <StatCard
           label="Left today"
-          value={String(stats?.dueProduction ?? 0)}
+          value={String(leftToday)}
           hint={
             !stats?.cardCount
               ? "No sentences yet"
-              : !stats.dueProduction
+              : !leftToday
                 ? doneToday
                   ? `Today's set is done — ${doneToday} reviewed`
                   : "Nothing waiting"
@@ -48,12 +50,21 @@ export default async function HomePage() {
       </section>
 
       <section className="flex flex-col gap-3">
+        {/* Both modes draw on the same daily budget, so these two numbers do
+            not add up to the day — whichever is opened first spends the pot.
+            Saying so beats letting them read as two separate sets. */}
+        {leftToday > 0 && (stats?.dueProduction ?? 0) > 0 && (stats?.dueCloze ?? 0) > 0 && (
+          <p className="text-xs text-muted">
+            Production and cloze share today&rsquo;s {setToday} — they don&rsquo;t
+            add up.
+          </p>
+        )}
         <ActionCard
           href="/study"
           title="Production"
           subtitle={
             stats?.dueProduction
-              ? `${stats.dueProduction} left today — English prompt in, full sentence out`
+              ? `${stats.dueProduction} ready — English prompt in, full sentence out`
               : "English prompt in, full sentence out"
           }
         />
@@ -62,7 +73,7 @@ export default async function HomePage() {
           title="Cloze"
           subtitle={
             stats?.dueCloze
-              ? `${stats.dueCloze} left today — fill the missing agreement`
+              ? `${stats.dueCloze} ready — fill the missing agreement`
               : "Fill the missing agreement"
           }
         />

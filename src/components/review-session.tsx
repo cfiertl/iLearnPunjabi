@@ -40,6 +40,14 @@ export function ReviewSession({
   // just graded drops out, so the array would shrink under us and `index`
   // would land on the wrong card, silently skipping every other one.
   const [queue] = useState(initialQueue);
+  // Snapshotted for the same reason as the queue, and it is the same bug seen
+  // from the other side. Grading re-runs this route's server components, so the
+  // `doneToday` PROP climbs by one per grade — while `index` climbs by one as
+  // well. Counting on the live prop therefore moved the position by two and the
+  // day total by one on every card: 1/30, then 3/31, then 5/32. The baseline is
+  // a fact about where the day stood when this sitting opened, and must not
+  // move under the sitting that is counting from it.
+  const [dayBaseline] = useState(doneToday);
   const [index, setIndex] = useState(0);
   const [revealed, setRevealed] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -142,8 +150,8 @@ export function ReviewSession({
 
   // Progress is measured against the day's set, not this sitting's slice of
   // it, so a second visit picks up where the first stopped.
-  const position = doneToday + index;
-  const dayTotal = doneToday + queue.length;
+  const position = dayBaseline + index;
+  const dayTotal = dayBaseline + queue.length;
   const progress = Math.round((position / dayTotal) * 100);
 
   return (

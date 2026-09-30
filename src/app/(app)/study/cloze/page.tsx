@@ -42,7 +42,7 @@ async function ClozeBody({ extra }: { extra: boolean }) {
   const [prefs, all, doneToday] = await Promise.all([
     getSessionPrefs(),
     getStudySession("cloze", { ignoreDailyCap: extra }),
-    countReviewedToday("cloze"),
+    countReviewedToday(),
   ]);
 
   // Drop cards whose slot cannot be located in the script being blanked —

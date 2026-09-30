@@ -71,8 +71,9 @@ export default async function SettingsPage() {
           <span className="text-sm font-medium">Reviews per day</span>
           <span className="text-xs text-muted">
             The size of the day&rsquo;s set, across however many sittings it
-            takes. Stopping half way and coming back later continues it rather
-            than starting a new one.
+            takes, and across production and cloze together — one budget, not
+            one each. Stopping half way and coming back later continues it
+            rather than starting a new one.
           </span>
           <input
             name="session_cap"
@@ -86,6 +87,12 @@ export default async function SettingsPage() {
 
         <label className="flex flex-col gap-1.5">
           <span className="text-sm font-medium">New cards per day</span>
+          <span className="text-xs text-muted">
+            Held back out of the budget above, per mode, so new sentences get in
+            even when reviews are stacked up. Keep it small: a card that reaches
+            box 5 comes round every 16 days for good, so each one adds a little
+            to every future day.
+          </span>
           <input
             name="new_per_day"
             type="number"
